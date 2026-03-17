@@ -26,7 +26,7 @@ Create a file named `.env` and add the following:
 
 ```env
 # Database Connection (Replace with your own if using MongoDB Atlas)
-MONGO_URI=mongodb://localhost:27017/pos_system
+MONGO_URI=mongodb+srv://user123:user123@cluster0.ofi5bhc.mongodb.net/pos_system?retryWrites=true&w=majority&appName=Cluster0
 
 # Security
 JWT_SECRET=your_super_secret_key_here
