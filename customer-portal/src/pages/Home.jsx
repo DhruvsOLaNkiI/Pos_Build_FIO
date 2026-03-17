@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import API from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useCustomerActivityTracking } from '../hooks/useCustomerActivityTracking';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin, Store as StoreIcon, X } from 'lucide-react';
 import GopuffCategoryRow from '../components/GopuffCategoryRow';
 import GopuffHeroGrid from '../components/GopuffHeroGrid';
 import GopuffMarquee from '../components/GopuffMarquee';
@@ -17,8 +17,22 @@ import AccountView from '../components/AccountView';
 const Home = () => {
     const { trackProductView } = useCustomerActivityTracking();
     const [products, setProducts] = useState([]);
+    const [nearbyStoresData, setNearbyStoresData] = useState([]); // [{store: {...}, products: [...]}]
     const [loading, setLoading] = useState(true);
     const { view, setView } = useOutletContext();
+    const [currentPincode, setCurrentPincode] = useState(() => localStorage.getItem('customer_pincode'));
+
+    const fetchNearbyStores = useCallback(async (pincode) => {
+        if (!pincode) return;
+        try {
+            const { data } = await API.get(`/stores/nearby?pincode=${pincode}`);
+            if (data.success) {
+                setNearbyStoresData(data.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch nearby stores', error);
+        }
+    }, []);
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -32,27 +46,63 @@ const Home = () => {
             }
         };
         fetchProducts();
-    }, []);
+        
+        if (currentPincode) {
+            fetchNearbyStores(currentPincode);
+        }
 
-    // Categorize products for different sections
-    const trendingProducts = products.slice(0, 10).map(p => ({
+        const handleLocationChange = (e) => {
+            setCurrentPincode(e.detail);
+            fetchNearbyStores(e.detail);
+        };
+
+        window.addEventListener('locationChanged', handleLocationChange);
+        return () => window.removeEventListener('locationChanged', handleLocationChange);
+    }, [currentPincode, fetchNearbyStores]);
+
+    // Merge all products from all nearby stores into one flat list
+    const storeProducts = useMemo(() => {
+        if (nearbyStoresData.length === 0) return [];
+        const all = [];
+        nearbyStoresData.forEach(({ products: prods }) => {
+            prods.forEach(p => all.push(p));
+        });
+        return all;
+    }, [nearbyStoresData]);
+
+    // Decide which products to use for the page
+    const activeProducts = storeProducts.length > 0 ? storeProducts : products;
+
+    // Dynamically group products by category
+    const categoryGroups = useMemo(() => {
+        const groups = {};
+        activeProducts.forEach(p => {
+            const cat = p.category || 'Other';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(p);
+        });
+        return groups;
+    }, [activeProducts]);
+
+    // Static categorizations for fallback (when no pincode)
+    const trendingProducts = activeProducts.slice(0, 10).map(p => ({
         ...p,
         badge: Math.random() > 0.7 ? "NEW" : null,
         famPromo: Math.random() > 0.8 ? "$4.19 Member Price" : null
     }));
 
-    const priceDrops = products.filter(p => (p.sellingPrice < p.purchasePrice * 1.5) || p.name.length % 2 === 0).slice(0, 10).map(p => ({
+    const priceDrops = activeProducts.filter(p => (p.sellingPrice < (p.purchasePrice || p.sellingPrice) * 1.5) || (p.name || '').length % 2 === 0).slice(0, 10).map(p => ({
         ...p,
         badge: "NEW LOWER PRICE",
         oldPrice: Math.round(p.sellingPrice * 1.25),
         stockWarning: Math.random() > 0.8 ? "ONLY 2 LEFT" : null
     }));
 
-    const drinkProducts = products.filter(p => p.category === 'Drinks' || p.category === 'Beverages' || p.name.toLowerCase().includes('drink')).slice(0, 10).map(p => ({
-        ...p,
-        iconBadge: "COLD",
-        promo: Math.random() > 0.7 ? "Spend $25 Save $5" : null
-    }));
+    const handleClearLocation = () => {
+        localStorage.removeItem('customer_pincode');
+        setCurrentPincode(null);
+        setNearbyStoresData([]);
+    };
 
     if (loading) {
         return (
@@ -82,7 +132,7 @@ const Home = () => {
                         </button>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-y-10 gap-x-6">
-                        {products.map(product => (
+                        {activeProducts.map(product => (
                             <div key={product._id} onClick={() => trackProductView(product._id, product.name)}>
                                 <GopuffProductCard product={product} />
                             </div>
@@ -95,31 +145,104 @@ const Home = () => {
 
     return (
         <div className="min-h-screen bg-white animate-fade-in pb-20">
+
+            {/* Store Location Banner - when pincode is active */}
+            {nearbyStoresData.length > 0 && (
+                <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+                    <div className="max-w-[1440px] mx-auto px-4 py-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <MapPin className="h-5 w-5" />
+                                <div>
+                                    <p className="font-black text-sm uppercase tracking-tight">
+                                        Delivering from {nearbyStoresData.length} store{nearbyStoresData.length > 1 ? 's' : ''} near {currentPincode}
+                                    </p>
+                                    <p className="text-blue-200 text-xs font-bold mt-0.5">
+                                        {nearbyStoresData.map(s => s.store.name).join(' · ')}
+                                    </p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={handleClearLocation}
+                                className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-tight transition-colors"
+                            >
+                                <X className="h-3 w-3" /> Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <GopuffCategoryRow />
             <GopuffHeroGrid />
             <GopuffMarquee />
 
-            <GopuffProductCarousel
-                title="TRENDING IN ATLANTA."
-                products={trendingProducts}
-                onMoreClick={() => setView('all-products')}
-            />
+            {/* When pincode is set: Show products grouped by CATEGORY as carousels */}
+            {storeProducts.length > 0 ? (
+                <>
+                    {/* Trending / Featured - first 10 products */}
+                    <GopuffProductCarousel
+                        title={`TRENDING NEAR ${currentPincode}.`}
+                        products={trendingProducts}
+                        onMoreClick={() => setView('all-products')}
+                    />
 
-            <GopuffShopCategoriesGrid />
+                    <GopuffShopCategoriesGrid />
 
-            <GopuffProductCarousel
-                title="PRICE DROPS."
-                products={priceDrops}
-                totalItems={210}
-                onMoreClick={() => setView('all-products')}
-            />
+                    {/* Dynamic Category Carousels */}
+                    {Object.entries(categoryGroups).map(([category, catProducts]) => (
+                        <GopuffProductCarousel
+                            key={category}
+                            title={`${category.toUpperCase()}.`}
+                            products={catProducts.slice(0, 15)}
+                            totalItems={catProducts.length}
+                            onMoreClick={() => setView('all-products')}
+                        />
+                    ))}
 
-            <GopuffProductCarousel
-                title="DRINKS."
-                products={drinkProducts}
-                totalItems={924}
-                onMoreClick={() => setView('all-products')}
-            />
+                    {/* Price Drops */}
+                    {priceDrops.length > 0 && (
+                        <GopuffProductCarousel
+                            title="PRICE DROPS."
+                            products={priceDrops}
+                            totalItems={priceDrops.length}
+                            onMoreClick={() => setView('all-products')}
+                        />
+                    )}
+                </>
+            ) : (
+                <>
+                    {/* Default view - no pincode */}
+                    <GopuffProductCarousel
+                        title="TRENDING IN ATLANTA."
+                        products={trendingProducts}
+                        onMoreClick={() => setView('all-products')}
+                    />
+
+                    <GopuffShopCategoriesGrid />
+
+                    <GopuffProductCarousel
+                        title="PRICE DROPS."
+                        products={priceDrops}
+                        totalItems={210}
+                        onMoreClick={() => setView('all-products')}
+                    />
+
+                    {/* Dynamic Category Carousels from all products */}
+                    {Object.entries(categoryGroups)
+                        .filter(([cat]) => cat !== 'Other')
+                        .slice(0, 5)
+                        .map(([category, catProducts]) => (
+                            <GopuffProductCarousel
+                                key={category}
+                                title={`${category.toUpperCase()}.`}
+                                products={catProducts.slice(0, 10)}
+                                totalItems={catProducts.length}
+                                onMoreClick={() => setView('all-products')}
+                            />
+                        ))}
+                </>
+            )}
 
             <GopuffBottomHeroGrid />
 

@@ -50,11 +50,24 @@ const storeSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Company',
             required: true,
+        },
+        location: {
+            type: {
+                type: String,
+                enum: ['Point'],
+                default: 'Point'
+            },
+            coordinates: {
+                type: [Number],
+                default: [0, 0] // [longitude, latitude]
+            }
         }
     },
     {
         timestamps: true,
     }
 );
+
+storeSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('Store', storeSchema);

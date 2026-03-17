@@ -139,6 +139,78 @@ router.get('/offers', async (req, res, next) => {
         next(error);
     }
 });
+// @desc    Get Nearby Stores based on pincode with their products
+// @route   GET /api/customer-app/stores/nearby?pincode=123456
+// @access  Public
+router.get('/stores/nearby', async (req, res, next) => {
+    try {
+        const { pincode, radius = 20 } = req.query; // Radius in KM
+        const { geocodePincode } = require('../utils/geocoder');
+        const Product = require('../models/Product');
+
+        if (!pincode) {
+            res.status(400);
+            return next(new Error('Please provide a pincode'));
+        }
+
+        let stores = [];
+
+        // Convert the user's pincode to coordinates
+        const coords = await geocodePincode(pincode);
+        if (!coords) {
+            // Fallback: Exact plain-text match if geocoding fails
+            stores = await Store.find({ pincode, isActive: true });
+        } else {
+            // Use MongoDB $near query
+            stores = await Store.find({
+                isActive: true,
+                location: {
+                    $near: {
+                        $geometry: {
+                            type: 'Point',
+                            coordinates: [coords.lng, coords.lat]
+                        },
+                        $maxDistance: parseInt(radius) * 1000 // Convert km to meters
+                    }
+                }
+            });
+        }
+
+        // For each store, fetch its products
+        const storesWithProducts = await Promise.all(
+            stores.map(async (store) => {
+                const products = await Product.find({
+                    storeId: store._id,
+                    isActive: true
+                }).select('-purchasePrice -stock -reorderLevel -supplier -__v');
+
+                return {
+                    store: {
+                        _id: store._id,
+                        name: store.name,
+                        code: store.code,
+                        address: store.address,
+                        pincode: store.pincode,
+                        contactNumber: store.contactNumber
+                    },
+                    products
+                };
+            })
+        );
+
+        const totalProducts = storesWithProducts.reduce((sum, s) => sum + s.products.length, 0);
+
+        res.status(200).json({ 
+            success: true, 
+            storeCount: stores.length,
+            productCount: totalProducts,
+            data: storesWithProducts 
+        });
+
+    } catch (error) {
+        next(error);
+    }
+});
 
 // @desc    Get store loyalty settings
 // @route   GET /api/customer-app/loyalty-settings

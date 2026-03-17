@@ -1,4 +1,5 @@
 const Store = require('../models/Store');
+const { geocodePincode } = require('../utils/geocoder');
 
 // @desc    Get all stores
 // @route   GET /api/stores
@@ -76,6 +77,18 @@ exports.createStore = async (req, res) => {
         }
 
         req.body.code = req.body.code.toUpperCase();
+
+        // Automatically geocode if pincode is present
+        if (req.body.pincode) {
+            const coords = await geocodePincode(req.body.pincode);
+            if (coords) {
+                req.body.location = {
+                    type: 'Point',
+                    coordinates: [coords.lng, coords.lat]
+                };
+            }
+        }
+
         const store = await Store.create(req.body);
 
         res.status(201).json({ success: true, data: store });
@@ -117,6 +130,17 @@ exports.updateStore = async (req, res) => {
         }
 
         if (req.body.code) req.body.code = req.body.code.toUpperCase();
+
+        // Re-geocode if pincode is updated
+        if (req.body.pincode && req.body.pincode !== store.pincode) {
+            const coords = await geocodePincode(req.body.pincode);
+            if (coords) {
+                req.body.location = {
+                    type: 'Point',
+                    coordinates: [coords.lng, coords.lat]
+                };
+            }
+        }
 
         store = await Store.findByIdAndUpdate(req.params.id, req.body, {
             new: true,

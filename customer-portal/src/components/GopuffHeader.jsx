@@ -1,12 +1,28 @@
-import { Search, User, ShoppingBag, ChevronDown, Star } from 'lucide-react';
+import { Search, User, ShoppingBag, ChevronDown, Star, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import LocationPickerModal from './LocationPickerModal';
 
 const GopuffHeader = ({ onViewHome, onViewAccount }) => {
     const { customer } = useAuth();
     const { totalItems } = useCart();
     const navigate = useNavigate();
+    
+    const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+    const [currentPincode, setCurrentPincode] = useState('SET LOCATION');
+
+    useEffect(() => {
+        const saved = localStorage.getItem('customer_pincode');
+        if (saved) setCurrentPincode(saved);
+    }, []);
+
+    const handleLocationSelect = (pincode) => {
+        setCurrentPincode(pincode);
+        // Dispatch custom event so the product grid can reload
+        window.dispatchEvent(new CustomEvent('locationChanged', { detail: pincode }));
+    };
 
     return (
         <header className="sticky top-0 z-50 bg-white border-b border-gray-100">
@@ -54,13 +70,23 @@ const GopuffHeader = ({ onViewHome, onViewAccount }) => {
                     </button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-gray-900">ARRIVES IN <span className="text-blue-600">23 MINS</span></span>
-                    <span className="text-gray-200 mx-1">•</span>
-                    <button className="flex items-center gap-1 hover:text-blue-600 transition-colors">
-                        1230 CAROLINE ST NE <ChevronDown className="h-3 w-3" />
+                    <span className="text-gray-900 hidden sm:inline">ARRIVES IN <span className="text-blue-600">FAST</span></span>
+                    <span className="text-gray-200 mx-1 hidden sm:inline">•</span>
+                    <button 
+                        onClick={() => setIsLocationModalOpen(true)}
+                        className="flex items-center gap-1.5 hover:text-blue-600 transition-colors bg-gray-100 px-3 py-1.5 rounded-full"
+                    >
+                        <MapPin className="h-3 w-3 text-blue-600" />
+                        {currentPincode} <ChevronDown className="h-3 w-3" />
                     </button>
                 </div>
             </div>
+
+            <LocationPickerModal 
+                isOpen={isLocationModalOpen}
+                onClose={() => setIsLocationModalOpen(false)}
+                onLocationSelect={handleLocationSelect}
+            />
         </header>
     );
 };

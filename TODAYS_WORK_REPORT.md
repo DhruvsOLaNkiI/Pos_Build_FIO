@@ -31,18 +31,18 @@ Today, we successfully moved the entire **FIO POS & Customer Portal** project fr
   ```
 - **Unified Configuration**: Standardized environment variables across all components using a single `.env` file for easier management.
 
-### 4. Comprehensive Documentation
-- **New README.md**: Created a detailed guide covering:
-    - How to clone the repo on a new machine.
-    - How to set up the `.env` file.
-    - How to create a MongoDB Atlas cluster if needed.
-    - Where each application runs by default.
+### 5. Bug Fixes & System Stability
+- **CORS Resolution**: Configured backend to allow authentication requests from the Customer Portal (port 5176).
+- **Dependency Alignment**: Fixed missing `jsonwebtoken`, `bcryptjs`, and `vite` dependencies across backend and portal.
+- **Environment Pathing**: Resolved issues with loading `.env` from the root directory in the backend.
+- **Port Cleanup**: Fixed `EADDRINUSE` errors by terminating lingering processes.
+- **Mongoose Configuration**: Verified and secured MongoDB Atlas connection stability.
 
 ---
 
 ## 🛠 Project URLs
-- **Admin Dashboard**: [http://localhost:5173](http://localhost:5173)
-- **Customer Portal**: [http://localhost:5174](http://localhost:5174)
+- **Admin Dashboard**: [http://localhost:5173](http://localhost:5173) (or available port)
+- **Customer Portal**: [http://localhost:5176](http://localhost:5176) (or available port)
 - **Backend API**: [http://localhost:5001](http://localhost:5001)
 
 ---
