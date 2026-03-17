@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    /* Pure white background */
+    --foreground: 220 10% 10%;
+    /* Very dark gray text for contrast */
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 10% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 10% 10%;
+
+    --primary: 198 100% 45%;
+    /* Gopuff bright blue (#00BAF2 approx) */
+    --primary-foreground: 0 0% 100%;
+    /* White text inside primary buttons */
+
+    --secondary: 0 0% 96%;
+    /* Very light gray for secondary areas like search bars */
+    --secondary-foreground: 220 10% 20%;
+
+    --muted: 0 0% 96%;
+    --muted-foreground: 220 10% 40%;
+    /* Lighter text for sub-labels */
+
+    --accent: 198 100% 95%;
+    /* Very light blue background for active/hover states */
+    --accent-foreground: 198 100% 40%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 90%;
+    /* Very subtle borders */
+    --input: 0 0% 90%;
+    --ring: 198 100% 45%;
+
+    --radius: 0.75rem;
+    /* Gopuff uses slightly more rounded standard elements, but full rounds for buttons/images */
+  }
+}
+
+@layer utilities {
+  .marquee-track {
+    display: flex;
+    width: max-content;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground tracking-tight pb-20;
+    /* pb-20 leaves room for the bottom navigation bar on mobile */
+  }
+}
+
+/* Glassmorphism Utilities */
+.glass {
+  @apply bg-white/70 backdrop-blur-md border border-white/40 shadow-sm;
+}
+
+.glass-dark {
+  @apply bg-primary/95 backdrop-blur-md border border-primary/40 shadow-md text-white;
+}
+
+/* Hide scrollbar for horizontal scrolling lists (like categories) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
