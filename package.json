@@ -3,10 +3,11 @@
     "version": "1.0.0",
     "description": "MERN Stack Point of Sale System",
     "scripts": {
-        "dev": "concurrently \"npm run server\" \"npm run client\"",
+        "dev": "concurrently \"npm run server\" \"npm run client\" \"npm run portal\"",
         "server": "cd pos-backend && npm run dev",
         "client": "cd pos-frontend && npm run dev",
-        "install-all": "npm install && cd pos-backend && npm install && cd ../pos-frontend && npm install"
+        "portal": "cd customer-portal && npm run dev",
+        "install-all": "npm install && cd pos-backend && npm install && cd ../pos-frontend && npm install && cd ../customer-portal && npm install"
     },
     "devDependencies": {
         "concurrently": "^8.2.2"

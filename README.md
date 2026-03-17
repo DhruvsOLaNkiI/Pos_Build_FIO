@@ -57,7 +57,14 @@ npm install
 
 ### 4. Running the Project
 
-Open three terminal windows to run everything simultaneously:
+You can run all three components (Backend, Admin, and Portal) at once using the root command:
+
+```bash
+# From the project root (untitled folder)
+npm run dev
+```
+
+Alternatively, open three terminal windows to run them manually:
 
 **Terminal 1 (Backend Server):**
 ```bash
@@ -77,9 +84,10 @@ cd customer-portal
 npm run dev
 ```
 
-## 📝 Configuration Note
-- The default backend port is `5001`.
-- If you change the `PORT` in `.env`, ensure you update the `VITE_API_URL` or equivalent in the frontend `src/services/api.js` files.
+## 🌐 URLs
+- **Admin Dashboard**: [http://localhost:5173](http://localhost:5173)
+- **Customer Portal**: [http://localhost:5174](http://localhost:5174)
+- **Backend API**: [http://localhost:5001](http://localhost:5001)
 
 ## 📦 Tech Stack
 - **Frontend**: React, Vite, Tailwind CSS, Lucide Icons, Framer Motion.
