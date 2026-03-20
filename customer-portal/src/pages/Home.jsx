@@ -92,6 +92,16 @@ const Home = () => {
         if (filters.category) result = result.filter(p => p.category === filters.category);
         if (filters.brand) result = result.filter(p => p.brand === filters.brand);
         if (filters.inStock) result = result.filter(p => (p.stockQty || 0) > 0);
+        if (filters.priceRange) {
+            const PRICE_MAP = {
+                'Under ₹100': { min: 0, max: 100 },
+                '₹100 - ₹500': { min: 100, max: 500 },
+                '₹500 - ₹1000': { min: 500, max: 1000 },
+                'Above ₹1000': { min: 1000, max: Infinity },
+            };
+            const range = PRICE_MAP[filters.priceRange];
+            if (range) result = result.filter(p => (p.sellingPrice || 0) >= range.min && (p.sellingPrice || 0) < range.max);
+        }
         if (filters.sort) {
             switch (filters.sort) {
                 case 'Price: Low to High':
