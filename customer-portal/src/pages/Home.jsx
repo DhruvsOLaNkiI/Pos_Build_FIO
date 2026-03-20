@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import API from '../services/api';
-import { useAuth } from '../context/AuthContext';
 import { useCustomerActivityTracking } from '../hooks/useCustomerActivityTracking';
-import { Loader2, MapPin, Store as StoreIcon, X } from 'lucide-react';
+import { Loader2, MapPin, X } from 'lucide-react';
 import GopuffCategoryRow from '../components/GopuffCategoryRow';
 import GopuffHeroGrid from '../components/GopuffHeroGrid';
 import GopuffMarquee from '../components/GopuffMarquee';
@@ -17,10 +16,11 @@ import AccountView from '../components/AccountView';
 const Home = () => {
     const { trackProductView } = useCustomerActivityTracking();
     const [products, setProducts] = useState([]);
-    const [nearbyStoresData, setNearbyStoresData] = useState([]); // [{store: {...}, products: [...]}]
+    const [nearbyStoresData, setNearbyStoresData] = useState([]);
     const [loading, setLoading] = useState(true);
     const { view, setView } = useOutletContext();
     const [currentPincode, setCurrentPincode] = useState(() => localStorage.getItem('customer_pincode'));
+    const [filters, setFilters] = useState({ category: '', brand: '', inStock: false, sort: '' });
 
     const fetchNearbyStores = useCallback(async (pincode) => {
         if (!pincode) return;
@@ -73,6 +73,47 @@ const Home = () => {
     // Decide which products to use for the page
     const activeProducts = storeProducts.length > 0 ? storeProducts : products;
 
+    // Derive categories and brands from products
+    const allCategories = useMemo(() => {
+        const cats = new Set();
+        activeProducts.forEach(p => { if (p.category) cats.add(p.category); });
+        return Array.from(cats).sort();
+    }, [activeProducts]);
+
+    const allBrands = useMemo(() => {
+        const brs = new Set();
+        activeProducts.forEach(p => { if (p.brand) brs.add(p.brand); });
+        return Array.from(brs).sort();
+    }, [activeProducts]);
+
+    // Apply filters
+    const filteredProducts = useMemo(() => {
+        let result = [...activeProducts];
+        if (filters.category) result = result.filter(p => p.category === filters.category);
+        if (filters.brand) result = result.filter(p => p.brand === filters.brand);
+        if (filters.inStock) result = result.filter(p => (p.stockQty || 0) > 0);
+        if (filters.sort) {
+            switch (filters.sort) {
+                case 'Price: Low to High':
+                    result.sort((a, b) => (a.sellingPrice || 0) - (b.sellingPrice || 0));
+                    break;
+                case 'Price: High to Low':
+                    result.sort((a, b) => (b.sellingPrice || 0) - (a.sellingPrice || 0));
+                    break;
+                case 'Name: A-Z':
+                    result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                    break;
+                case 'Name: Z-A':
+                    result.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+                    break;
+                case 'Newest':
+                    result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+                    break;
+            }
+        }
+        return result;
+    }, [activeProducts, filters]);
+
     // Dynamically group products by category
     const categoryGroups = useMemo(() => {
         const groups = {};
@@ -122,10 +163,23 @@ const Home = () => {
     if (view === 'all-products') {
         return (
             <main className="animate-fade-in bg-white min-h-screen pb-20">
-                <FilterBar />
+                <FilterBar
+                    categories={allCategories}
+                    brands={allBrands}
+                    activeFilters={filters}
+                    onFilterChange={setFilters}
+                />
                 <div className="max-w-[1440px] mx-auto px-4 py-8">
                     <div className="flex items-center justify-between mb-8">
-                        <h1 className="font-extrabold italic text-4xl tracking-tighter uppercase text-black">ALL PRODUCTS.</h1>
+                        <div>
+                            <h1 className="font-extrabold italic text-4xl tracking-tighter uppercase text-black">
+                                {filters.category || filters.brand || 'ALL PRODUCTS'}.
+                            </h1>
+                            <p className="text-xs text-gray-400 font-bold mt-1 uppercase tracking-wider">
+                                {filteredProducts.length} item{filteredProducts.length !== 1 ? 's' : ''}
+                                {filters.inStock && ' · In Stock Only'}
+                            </p>
+                        </div>
                         <button
                             onClick={() => setView('home')}
                             className="bg-black text-white px-6 py-3 rounded-full font-black text-xs hover:bg-gray-800 transition-colors uppercase tracking-widest"
@@ -133,13 +187,20 @@ const Home = () => {
                             BACK HOME
                         </button>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-y-10 gap-x-6">
-                        {activeProducts.map(product => (
-                            <div key={product._id} onClick={() => trackProductView(product._id, product.name)}>
-                                <GopuffProductCard product={product} />
-                            </div>
-                        ))}
-                    </div>
+                    {filteredProducts.length === 0 ? (
+                        <div className="text-center py-20 text-gray-400">
+                            <p className="font-black text-lg uppercase tracking-wider">No products found</p>
+                            <p className="text-sm mt-2">Try adjusting your filters</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-y-10 gap-x-6">
+                            {filteredProducts.map(product => (
+                                <div key={product._id} onClick={() => trackProductView(product._id, product.name)}>
+                                    <GopuffProductCard product={product} />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </main>
         );

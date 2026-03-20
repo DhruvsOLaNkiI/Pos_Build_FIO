@@ -284,7 +284,7 @@ router.get('/products/:id', async (req, res, next) => {
         const product = await Product.findById(req.params.id)
             .populate('storeId', 'name code address pincode contactNumber')
             .populate('unit', 'name shortName')
-            .select('-purchasePrice -stockQty -warehouseStock -minStockLevel -batches -inventoryItemId -__v');
+            .select('-purchasePrice -warehouseStock -minStockLevel -batches -inventoryItemId -__v');
 
         if (!product) {
             res.status(404);
@@ -301,7 +301,7 @@ router.get('/products/:id', async (req, res, next) => {
                 _id: { $ne: product._id }
             })
                 .populate('storeId', 'name code')
-                .select('-purchasePrice -stockQty -warehouseStock -minStockLevel -batches -inventoryItemId -__v');
+                .select('-purchasePrice -warehouseStock -minStockLevel -batches -inventoryItemId -__v');
         }
 
         // Build store info
