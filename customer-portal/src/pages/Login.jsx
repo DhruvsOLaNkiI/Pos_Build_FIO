@@ -18,7 +18,7 @@ const Login = () => {
 
         try {
             await login(customerId);
-            navigate('/');
+            navigate('/select-company');
         } catch (err) {
             setError(err.response?.data?.message || 'Invalid Customer ID. Please check and try again.');
         } finally {

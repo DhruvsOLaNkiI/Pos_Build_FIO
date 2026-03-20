@@ -306,6 +306,37 @@ const paySalary = async (req, res, next) => {
     }
 };
 
+// @desc    Update employee page permissions
+// @route   PUT /api/employees/:id/permissions
+// @access  Private (Owner only)
+const updatePermissions = async (req, res, next) => {
+    try {
+        const { permissions } = req.body;
+
+        const employee = await User.findOne({ _id: req.params.id, companyId: req.user.companyId });
+
+        if (!employee) {
+            res.status(404);
+            return next(new Error('Employee not found'));
+        }
+
+        employee.permissions = Array.isArray(permissions) ? permissions : [];
+        await employee.save();
+
+        res.status(200).json({
+            success: true,
+            data: {
+                _id: employee._id,
+                name: employee.name,
+                role: employee.role,
+                permissions: employee.permissions,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getEmployees,
     getEmployee,
@@ -315,5 +346,6 @@ module.exports = {
     approveEmployee,
     createAppeal,
     respondToAppeal,
-    paySalary
+    paySalary,
+    updatePermissions,
 };

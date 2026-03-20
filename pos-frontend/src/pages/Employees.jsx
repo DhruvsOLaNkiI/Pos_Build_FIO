@@ -32,10 +32,11 @@ import {
     TabsTrigger,
 } from '@/components/ui/tabs'; // Import Tabs
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Plus, Edit2, Trash2, Shield, User, Smartphone, Mail, Banknote,
     MessageCircle, Calendar, History, TrendingUp, HelpCircle, Wallet,
-    ReceiptText, Loader2
+    ReceiptText, Loader2, KeyRound
 } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import Attendance from '@/components/employees/Attendance'; // Import new components
@@ -67,6 +68,12 @@ const Employees = () => {
     const [employeeSalesData, setEmployeeSalesData] = useState([]);
     const [salesLoading, setSalesLoading] = useState(false);
 
+    // Page Access State
+    const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
+    const [accessEmployee, setAccessEmployee] = useState(null);
+    const [accessPermissions, setAccessPermissions] = useState([]);
+    const [accessLoading, setAccessLoading] = useState(false);
+
     // Form State
     const [formData, setFormData] = useState({
         name: '',
@@ -88,6 +95,29 @@ const Employees = () => {
     });
 
     const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const PAGE_PERMISSIONS = [
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'billing', label: 'Billing' },
+    { key: 'customers', label: 'Customers' },
+    { key: 'reports', label: 'Reports' },
+    { key: 'expenses', label: 'Expenses' },
+    { key: 'products', label: 'Products' },
+    { key: 'create_products', label: 'Create Product' },
+    { key: 'warehouse_inventory', label: 'Warehouse Inventory' },
+    { key: 'expired_products', label: 'Expire Product' },
+    { key: 'units', label: 'Units' },
+    { key: 'stores', label: 'Stores' },
+    { key: 'warehouses', label: 'Warehouses' },
+    { key: 'suppliers', label: 'Suppliers' },
+    { key: 'purchases', label: 'Purchases' },
+    { key: 'order_tracking', label: 'Order Tracking' },
+    { key: 'employees', label: 'People' },
+    { key: 'loyalty', label: 'Loyalty & Offers' },
+    { key: 'online_orders', label: 'Online Orders' },
+    { key: 'alerts', label: 'Alerts' },
+    { key: 'settings', label: 'Settings' },
+];
 
     useEffect(() => {
         if (user?.role === 'owner') {
@@ -244,6 +274,29 @@ const Employees = () => {
             fetchEmployees();
         } catch (error) {
             console.error("Delete failed", error);
+        }
+    };
+
+    const handleOpenAccessModal = (employee) => {
+        setAccessEmployee(employee);
+        setAccessPermissions(employee.permissions || []);
+        setIsAccessModalOpen(true);
+    };
+
+    const handleSaveAccess = async () => {
+        if (!accessEmployee) return;
+        setAccessLoading(true);
+        try {
+            const res = await API.put(`/employees/${accessEmployee._id}/permissions`, { permissions: accessPermissions });
+            if (res.data.success) {
+                toast({ title: 'Access Updated', description: `Page access updated for ${accessEmployee.name}` });
+                setEmployees(prev => prev.map(e => e._id === accessEmployee._id ? { ...e, permissions: accessPermissions } : e));
+                setIsAccessModalOpen(false);
+            }
+        } catch (error) {
+            toast({ title: 'Error', description: 'Failed to update access', variant: 'destructive' });
+        } finally {
+            setAccessLoading(false);
         }
     };
 
@@ -473,6 +526,15 @@ const Employees = () => {
                                             </TableCell>
                                             <TableCell>{employee.leaveAllowance || 12} Days</TableCell>
                                             <TableCell className="text-right">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 mr-2 text-purple-600 border-purple-200 hover:bg-purple-50"
+                                                    onClick={() => handleOpenAccessModal(employee)}
+                                                    title="Manage Page Access"
+                                                >
+                                                    <KeyRound className="w-3.5 h-3.5 mr-1" /> Access
+                                                </Button>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -906,6 +968,59 @@ const Employees = () => {
                     )}
                     <DialogFooter>
                         <Button onClick={() => setIsSalesModalOpen(false)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Manage Page Access Dialog */}
+            <Dialog open={isAccessModalOpen} onOpenChange={setIsAccessModalOpen}>
+                <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <KeyRound className="w-5 h-5" />
+                            Manage Page Access — {accessEmployee?.name}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <p className="text-xs text-muted-foreground font-medium">
+                            Select which pages <strong>{accessEmployee?.role === 'cashier' ? 'cashiers' : 'staff'}</strong> can access. Leave unchecked to deny access.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                            {PAGE_PERMISSIONS.map(perm => (
+                                <label
+                                    key={perm.key}
+                                    onClick={() => {
+                                        if (accessPermissions.includes(perm.key)) {
+                                            setAccessPermissions(prev => prev.filter(p => p !== perm.key));
+                                        } else {
+                                            setAccessPermissions(prev => [...prev, perm.key]);
+                                        }
+                                    }}
+                                    className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all shadow-sm ${
+                                        accessPermissions.includes(perm.key)
+                                            ? 'border-blue-600 bg-blue-50 text-blue-900 border-opacity-100'
+                                            : 'border-gray-100 bg-white text-gray-800 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                        accessPermissions.includes(perm.key) ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
+                                    }`}>
+                                        {accessPermissions.includes(perm.key) && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                                    </div>
+                                    <span className="text-xs font-black uppercase tracking-tight">{perm.label}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground italic">
+                            Note: Owner always has full access. Role-based access still applies.
+                        </p>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAccessModalOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSaveAccess} disabled={accessLoading}>
+                            {accessLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Save Access
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

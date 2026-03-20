@@ -9,7 +9,8 @@ const {
     approveEmployee,
     createAppeal,
     respondToAppeal,
-    paySalary
+    paySalary,
+    updatePermissions,
 } = require('../controllers/employeeController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -29,6 +30,7 @@ router.route('/:id')
     .delete(authorize('owner'), deleteEmployee);
 
 router.put('/:id/approve', authorize('owner'), approveEmployee);
+router.put('/:id/permissions', authorize('owner'), updatePermissions);
 router.put('/:id/appeal/:appealId', authorize('owner'), respondToAppeal);
 router.post('/:id/pay-salary', authorize('owner'), paySalary);
 
