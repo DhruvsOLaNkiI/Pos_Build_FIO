@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Wallet, ChevronRight, Package, HeadphonesIcon, Users, MapPin, LogOut, ChevronLeft, Loader2, Clock, CheckCircle, Truck, X, Plus, Home, Building2, MoreHorizontal, Store as StoreIcon, CreditCard } from 'lucide-react';
+import { User, Wallet, ChevronRight, Package, HeadphonesIcon, Users, MapPin, LogOut, ChevronLeft, Loader2, Clock, CheckCircle, Truck, X, Plus, Home, Building2, MoreHorizontal, Store as StoreIcon, CreditCard, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import API from '../services/api';
 
@@ -32,6 +32,7 @@ const AccountView = ({ onViewHome }) => {
     const [orders, setOrders] = useState([]);
     const [loadingOrders, setLoadingOrders] = useState(false);
     const [expandedOrder, setExpandedOrder] = useState(null);
+    const [cancellingOrder, setCancellingOrder] = useState(null);
 
     // Addresses state
     const [addresses, setAddresses] = useState([]);
@@ -66,6 +67,22 @@ const AccountView = ({ onViewHome }) => {
             console.error('Failed to fetch orders', err);
         } finally {
             setLoadingOrders(false);
+        }
+    };
+
+    const handleCancelOrder = async (orderId) => {
+        if (!window.confirm('Are you sure you want to cancel this order?')) return;
+        setCancellingOrder(orderId);
+        try {
+            const { data } = await API.put(`/auth/orders/${orderId}/cancel`);
+            if (data.success) {
+                setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status: 'cancelled' } : o));
+            }
+        } catch (err) {
+            console.error('Failed to cancel order', err);
+            alert(err.response?.data?.message || 'Failed to cancel order');
+        } finally {
+            setCancellingOrder(null);
         }
     };
 
@@ -256,17 +273,32 @@ const AccountView = ({ onViewHome }) => {
                                                 <span className="text-blue-600">{formatCurrency(order.grandTotal)}</span>
                                             </div>
                                         </div>
-                                        {order.deliveryAddress?.street && (
-                                            <div className="bg-white rounded-xl p-3 border border-gray-100 mt-2">
-                                                <div className="flex items-center gap-1 text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">
-                                                    <MapPin className="w-3 h-3" /> DELIVERED TO
-                                                </div>
-                                                <p className="font-bold text-xs">{order.deliveryAddress.fullName}</p>
-                                                <p className="text-[10px] text-gray-500">
-                                                    {order.deliveryAddress.street}, {order.deliveryAddress.city}, {order.deliveryAddress.state} - {order.deliveryAddress.pincode}
-                                                </p>
-                                            </div>
-                                        )}
+                                                {order.deliveryAddress?.street && (
+                                                    <div className="bg-white rounded-xl p-3 border border-gray-100 mt-2">
+                                                        <div className="flex items-center gap-1 text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">
+                                                            <MapPin className="w-3 h-3" /> DELIVERED TO
+                                                        </div>
+                                                        <p className="font-bold text-xs">{order.deliveryAddress.fullName}</p>
+                                                        <p className="text-[10px] text-gray-500">
+                                                            {order.deliveryAddress.street}, {order.deliveryAddress.city}, {order.deliveryAddress.state} - {order.deliveryAddress.pincode}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {/* Cancel Button - only for pending orders */}
+                                                {order.status === 'pending' && (
+                                                    <button
+                                                        onClick={() => handleCancelOrder(order._id)}
+                                                        disabled={cancellingOrder === order._id}
+                                                        className="w-full mt-3 flex items-center justify-center gap-2 bg-red-50 text-red-600 font-black text-xs uppercase tracking-widest py-3 rounded-xl border border-red-100 hover:bg-red-100 transition-all disabled:opacity-50"
+                                                    >
+                                                        {cancellingOrder === order._id ? (
+                                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                                        ) : (
+                                                            <XCircle className="w-4 h-4" />
+                                                        )}
+                                                        CANCEL ORDER
+                                                    </button>
+                                                )}
                                     </div>
                                 )}
                             </div>

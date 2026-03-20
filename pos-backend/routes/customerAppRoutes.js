@@ -679,6 +679,59 @@ router.get('/auth/orders/:id', protect, async (req, res, next) => {
     }
 });
 
+// @desc    Cancel an order (customer can only cancel pending orders)
+// @route   PUT /api/customer-app/auth/orders/:id/cancel
+// @access  Private (Customer)
+router.put('/auth/orders/:id/cancel', protect, async (req, res, next) => {
+    try {
+        const order = await Sale.findOne({ _id: req.params.id, customer: req.user._id });
+
+        if (!order) {
+            res.status(404);
+            return next(new Error('Order not found'));
+        }
+
+        if (order.status !== 'pending') {
+            res.status(400);
+            return next(new Error('Only pending orders can be cancelled'));
+        }
+
+        // Restore stock for each item
+        for (const item of order.items) {
+            const product = await Product.findById(item.product);
+            if (product) {
+                product.stockQty += item.quantity;
+                await product.save();
+            }
+        }
+
+        order.status = 'cancelled';
+        await order.save();
+
+        // Refund loyalty points if any were redeemed
+        if (order.pointsRedeemed > 0) {
+            const customer = await Customer.findById(req.user._id);
+            if (customer) {
+                customer.loyaltyPoints += order.pointsRedeemed;
+                customer.totalPurchases = Math.max(0, (customer.totalPurchases || 1) - 1);
+                customer.totalSpent = Math.max(0, (customer.totalSpent || 0) - order.grandTotal);
+                await customer.save();
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                _id: order._id,
+                invoiceNo: order.invoiceNo,
+                status: order.status,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // Customer Activity Tracking Routes
 const CustomerActivity = require('../models/CustomerActivity');
 
