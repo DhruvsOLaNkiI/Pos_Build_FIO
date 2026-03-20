@@ -12,6 +12,8 @@ import {
     Settings,
     Warehouse,
     Store,
+    Globe,
+    Monitor,
 } from 'lucide-react';
 import {
     BarChart,
@@ -38,6 +40,12 @@ const RANGE_OPTIONS = [
     { key: '1y', label: '1Y' },
 ];
 
+const SOURCE_OPTIONS = [
+    { key: 'all', label: 'All Sales', icon: DollarSign },
+    { key: 'instore', label: 'In-Store', icon: Monitor },
+    { key: 'online', label: 'Online', icon: Globe },
+];
+
 const COLORS = ['#F97316', '#1E3A8A', '#0EA5E9', '#8B5CF6']; // Orange, Dark Blue, Light Blue, Purple
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = ['12 Am', '2 Am', '4 Am', '6 Am', '8 Am', '10 Am', '12 Pm', '2 Pm', '4 Pm', '6 Pm', '8 Pm', '10 Pm'];
@@ -61,14 +69,15 @@ const Dashboard = () => {
     });
     const [loading, setLoading] = useState(true);
     const [range, setRange] = useState('30d');
+    const [source, setSource] = useState('all');
 
     const [inventoryStock, setInventoryStock] = useState([]);
     const [shopStock, setShopStock] = useState([]);
 
-    const fetchStats = async (selectedRange) => {
+    const fetchStats = async (selectedRange, selectedSource) => {
         try {
             setLoading(true);
-            const { data } = await API.get(`/dashboard?range=${selectedRange}`);
+            const { data } = await API.get(`/dashboard?range=${selectedRange}&source=${selectedSource}`);
             setStats(data.data);
         } catch (error) {
             console.error("Failed to fetch dashboard stats", error);
@@ -91,9 +100,9 @@ const Dashboard = () => {
     };
 
     useEffect(() => {
-        fetchStats(range);
+        fetchStats(range, source);
         fetchStockData();
-    }, [range]);
+    }, [range, source]);
 
     // Custom Heatmap Data formatting
     const HEATMAP_Y_LABELS = ['6 PM', '4 PM', '2 PM', '12 PM', '10 AM', '8 AM', '6 AM', '4 AM', '2 AM'];
@@ -187,7 +196,22 @@ const Dashboard = () => {
                                 <CardTitle className="text-lg font-bold">Sales Overview</CardTitle>
                             </div>
 
-                            {/* Toggle Ranges */}
+                            {/* Source Filter */}
+                            <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+                                {SOURCE_OPTIONS.map((opt) => (
+                                    <button
+                                        key={opt.key}
+                                        onClick={() => setSource(opt.key)}
+                                        className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-md transition-all ${source === opt.key ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                                            }`}
+                                    >
+                                        <opt.icon className="w-3.5 h-3.5" />
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Time Range Toggle */}
                             <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
                                 {RANGE_OPTIONS.map((opt) => (
                                     <button

@@ -28,6 +28,7 @@ import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
 import SuperAdminCompanies from '@/pages/SuperAdminCompanies';
 import SuperAdminApiMonitoring from '@/pages/SuperAdminApiMonitoring';
 import UserActivityAnalytics from '@/pages/UserActivityAnalytics';
+import OnlineOrders from '@/pages/OnlineOrders';
 
 function App() {
     const { isAuthenticated, loading, user } = useAuth();
@@ -94,6 +95,9 @@ function App() {
 
                 {/* Loyalty & Offers */}
                 <Route path="/loyalty" element={<Loyalty />} />
+
+                {/* Online Orders */}
+                <Route path="/online-orders" element={<OnlineOrders />} />
 
                 {/* Super Admin Routes (only accessible when role === super-admin) */}
                 <Route

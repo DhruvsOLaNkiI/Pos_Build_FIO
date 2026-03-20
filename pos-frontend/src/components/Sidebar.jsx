@@ -65,6 +65,7 @@ const navItems = [
     // Management
     { icon: UserCog, label: 'People', path: '/employees', roles: ['owner', 'cashier', 'staff'], category: 'Management' },
     { icon: Sparkles, label: 'Loyalty & Offers', path: '/loyalty', roles: ['owner'], category: 'Management' },
+    { icon: Globe, label: 'Online Orders', path: '/online-orders', roles: ['owner', 'cashier'], category: 'Management' },
     { icon: Bell, label: 'Alerts', path: '/alerts', roles: ['owner', 'staff'], category: 'Management' },
     { icon: Settings, label: 'Settings', path: '/settings', roles: ['owner'], category: 'Management' },
 ];

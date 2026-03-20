@@ -21,6 +21,15 @@ const getDashboardStats = async (req, res, next) => {
             baseMatch.storeId = new mongoose.Types.ObjectId(storeId);
         }
 
+        // Filter by order source: 'all', 'instore', 'app'
+        const source = req.query.source || 'all';
+        if (source === 'instore') {
+            baseMatch.orderSource = 'instore';
+        } else if (source === 'app' || source === 'online') {
+            baseMatch.orderSource = 'app';
+        }
+        // 'all' = no orderSource filter, shows combined data
+
         const range = req.query.range || '7d';
         let daysBack = 7;
         let dateFormat = '%Y-%m-%d';

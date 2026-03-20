@@ -76,6 +76,9 @@ app.use('/api/loyalty', loyaltyRoutes);
 // --- Customer Portal Application Routes ---
 app.use('/api/customer-app', customerAppRoutes);
 
+// --- Admin Online Orders Management ---
+app.use('/api/online-orders', require('./routes/onlineOrderRoutes'));
+
 // --- User Activity Tracking Routes ---
 app.use('/api/user-activity', require('./routes/userActivityRoutes'));
 
