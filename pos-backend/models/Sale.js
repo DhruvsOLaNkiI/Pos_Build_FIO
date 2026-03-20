@@ -47,7 +47,7 @@ const saleSchema = new mongoose.Schema(
             {
                 method: {
                     type: String,
-                    enum: ['cash', 'card', 'upi'],
+                    enum: ['cash', 'card', 'upi', 'cod', 'pay_at_store'],
                     required: true,
                 },
                 amount: {
@@ -84,7 +84,21 @@ const saleSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Company',
             required: true,
-        }
+        },
+        deliveryAddress: {
+            label: { type: String, default: '' },
+            fullName: { type: String, default: '' },
+            mobile: { type: String, default: '' },
+            street: { type: String, default: '' },
+            city: { type: String, default: '' },
+            state: { type: String, default: '' },
+            pincode: { type: String, default: '' },
+            landmark: { type: String, default: '' },
+        },
+        pointsRedeemed: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true,

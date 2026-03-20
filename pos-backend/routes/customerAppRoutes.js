@@ -5,6 +5,7 @@ const Customer = require('../models/Customer');
 const Product = require('../models/Product');
 const Sale = require('../models/Sale');
 const Store = require('../models/Store');
+const CustomerAddress = require('../models/CustomerAddress');
 const { protect } = require('../middleware/authMiddleware'); // For protected customer routes later if needed
 
 // @desc    Customer Login
@@ -94,6 +95,164 @@ router.get('/auth/profile', protect, async (req, res, next) => {
                 totalPurchases: customer.totalPurchases,
             }
         });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// ==================== ADDRESS ENDPOINTS ====================
+
+// @desc    Get all addresses for customer
+// @route   GET /api/customer-app/auth/addresses
+// @access  Private (Customer)
+router.get('/auth/addresses', protect, async (req, res, next) => {
+    try {
+        const addresses = await CustomerAddress.find({ customerId: req.user._id })
+            .sort({ isDefault: -1, createdAt: -1 });
+
+        res.status(200).json({ success: true, data: addresses });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Add new address
+// @route   POST /api/customer-app/auth/addresses
+// @access  Private (Customer)
+router.post('/auth/addresses', protect, async (req, res, next) => {
+    try {
+        const { label, fullName, mobile, street, city, state, pincode, landmark, isDefault } = req.body;
+
+        if (!fullName || !mobile || !street || !city || !state || !pincode) {
+            res.status(400);
+            return next(new Error('Please fill all required address fields'));
+        }
+
+        const customer = await Customer.findById(req.user._id);
+        if (!customer) {
+            res.status(404);
+            return next(new Error('Customer not found'));
+        }
+
+        // If this is set as default, unset other defaults
+        if (isDefault) {
+            await CustomerAddress.updateMany(
+                { customerId: req.user._id },
+                { isDefault: false }
+            );
+        }
+
+        const address = await CustomerAddress.create({
+            customerId: req.user._id,
+            label: label || 'Home',
+            fullName,
+            mobile,
+            street,
+            city,
+            state,
+            pincode,
+            landmark: landmark || '',
+            isDefault: isDefault || false,
+            companyId: customer.companyId,
+        });
+
+        res.status(201).json({ success: true, data: address });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Update address
+// @route   PUT /api/customer-app/auth/addresses/:id
+// @access  Private (Customer)
+router.put('/auth/addresses/:id', protect, async (req, res, next) => {
+    try {
+        const address = await CustomerAddress.findOne({
+            _id: req.params.id,
+            customerId: req.user._id,
+        });
+
+        if (!address) {
+            res.status(404);
+            return next(new Error('Address not found'));
+        }
+
+        const { label, fullName, mobile, street, city, state, pincode, landmark, isDefault } = req.body;
+
+        // If setting as default, unset other defaults
+        if (isDefault && !address.isDefault) {
+            await CustomerAddress.updateMany(
+                { customerId: req.user._id },
+                { isDefault: false }
+            );
+        }
+
+        if (label !== undefined) address.label = label;
+        if (fullName !== undefined) address.fullName = fullName;
+        if (mobile !== undefined) address.mobile = mobile;
+        if (street !== undefined) address.street = street;
+        if (city !== undefined) address.city = city;
+        if (state !== undefined) address.state = state;
+        if (pincode !== undefined) address.pincode = pincode;
+        if (landmark !== undefined) address.landmark = landmark;
+        if (isDefault !== undefined) address.isDefault = isDefault;
+
+        await address.save();
+
+        res.status(200).json({ success: true, data: address });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Delete address
+// @route   DELETE /api/customer-app/auth/addresses/:id
+// @access  Private (Customer)
+router.delete('/auth/addresses/:id', protect, async (req, res, next) => {
+    try {
+        const address = await CustomerAddress.findOne({
+            _id: req.params.id,
+            customerId: req.user._id,
+        });
+
+        if (!address) {
+            res.status(404);
+            return next(new Error('Address not found'));
+        }
+
+        await address.deleteOne();
+
+        res.status(200).json({ success: true, message: 'Address deleted' });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Set address as default
+// @route   PUT /api/customer-app/auth/addresses/:id/default
+// @access  Private (Customer)
+router.put('/auth/addresses/:id/default', protect, async (req, res, next) => {
+    try {
+        const address = await CustomerAddress.findOne({
+            _id: req.params.id,
+            customerId: req.user._id,
+        });
+
+        if (!address) {
+            res.status(404);
+            return next(new Error('Address not found'));
+        }
+
+        // Unset all other defaults
+        await CustomerAddress.updateMany(
+            { customerId: req.user._id },
+            { isDefault: false }
+        );
+
+        address.isDefault = true;
+        await address.save();
+
+        res.status(200).json({ success: true, data: address });
     } catch (error) {
         next(error);
     }
@@ -299,12 +458,17 @@ router.get('/loyalty-settings', async (req, res, next) => {
 // @access  Private (Customer)
 router.post('/orders', protect, async (req, res, next) => {
     try {
-        const { items, pointsToRedeem, pointDiscount } = req.body;
+        const { items, pointsToRedeem, pointDiscount, deliveryAddress, paymentMethod } = req.body;
         const customerId = req.user._id;
 
         if (!items || items.length === 0) {
             res.status(400);
             return next(new Error('No items in order'));
+        }
+
+        if (!deliveryAddress) {
+            res.status(400);
+            return next(new Error('Please provide a delivery address'));
         }
 
         const customer = await Customer.findById(customerId);
@@ -380,6 +544,16 @@ router.post('/orders', protect, async (req, res, next) => {
             customer.loyaltyPoints -= pointsToRedeem;
         }
 
+        // Determine payment method
+        const payMethod = paymentMethod || 'cod';
+        const payMethodMap = {
+            'cod': 'cash',
+            'cash_on_delivery': 'cash',
+            'upi': 'upi',
+            'card': 'card',
+            'pay_at_store': 'cash',
+        };
+
         // Create the Sale/Order record
         const sale = await Sale.create({
             invoiceNo,
@@ -388,13 +562,23 @@ router.post('/orders', protect, async (req, res, next) => {
             totalGST,
             discount,
             grandTotal,
-            paymentMethods: [{ method: 'cash', amount: grandTotal }],
+            paymentMethods: [{ method: payMethodMap[payMethod] || 'cash', amount: grandTotal }],
             customer: customer._id,
             orderSource: 'app',
             status: 'pending',
             storeId: store._id,
             companyId: customer.companyId,
-            pointsRedeemed: pointsToRedeem || 0
+            pointsRedeemed: pointsToRedeem || 0,
+            deliveryAddress: {
+                label: deliveryAddress.label || '',
+                fullName: deliveryAddress.fullName || '',
+                mobile: deliveryAddress.mobile || '',
+                street: deliveryAddress.street || '',
+                city: deliveryAddress.city || '',
+                state: deliveryAddress.state || '',
+                pincode: deliveryAddress.pincode || '',
+                landmark: deliveryAddress.landmark || '',
+            }
         });
 
         // Update customer points and stats
@@ -412,6 +596,83 @@ router.post('/orders', protect, async (req, res, next) => {
             pointsEarned,
             pointsRedeemed: pointsToRedeem || 0,
             remainingPoints: customer.loyaltyPoints
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Get customer orders (Order History)
+// @route   GET /api/customer-app/auth/orders
+// @access  Private (Customer)
+router.get('/auth/orders', protect, async (req, res, next) => {
+    try {
+        const orders = await Sale.find({ customer: req.user._id, orderSource: 'app' })
+            .populate('storeId', 'name code address')
+            .sort({ createdAt: -1 });
+
+        const formattedOrders = orders.map(order => ({
+            _id: order._id,
+            invoiceNo: order.invoiceNo,
+            items: order.items,
+            subtotal: order.subtotal,
+            totalGST: order.totalGST,
+            discount: order.discount,
+            grandTotal: order.grandTotal,
+            paymentMethods: order.paymentMethods,
+            status: order.status,
+            deliveryAddress: order.deliveryAddress,
+            storeName: order.storeId?.name || '',
+            storeCode: order.storeId?.code || '',
+            pointsRedeemed: order.pointsRedeemed || 0,
+            createdAt: order.createdAt,
+            updatedAt: order.updatedAt,
+        }));
+
+        res.status(200).json({ success: true, count: formattedOrders.length, data: formattedOrders });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Get single order details (Invoice)
+// @route   GET /api/customer-app/auth/orders/:id
+// @access  Private (Customer)
+router.get('/auth/orders/:id', protect, async (req, res, next) => {
+    try {
+        const order = await Sale.findOne({ _id: req.params.id, customer: req.user._id })
+            .populate('storeId', 'name code address pincode contactNumber')
+            .populate('items.product', 'name imageUrl imageUrls');
+
+        if (!order) {
+            res.status(404);
+            return next(new Error('Order not found'));
+        }
+
+        res.status(200).json({
+            success: true,
+            data: {
+                _id: order._id,
+                invoiceNo: order.invoiceNo,
+                items: order.items,
+                subtotal: order.subtotal,
+                totalGST: order.totalGST,
+                discount: order.discount,
+                grandTotal: order.grandTotal,
+                paymentMethods: order.paymentMethods,
+                status: order.status,
+                deliveryAddress: order.deliveryAddress,
+                store: order.storeId ? {
+                    name: order.storeId.name,
+                    code: order.storeId.code,
+                    address: order.storeId.address,
+                    pincode: order.storeId.pincode,
+                    contactNumber: order.storeId.contactNumber,
+                } : null,
+                pointsRedeemed: order.pointsRedeemed || 0,
+                createdAt: order.createdAt,
+                updatedAt: order.updatedAt,
+            }
         });
     } catch (error) {
         next(error);

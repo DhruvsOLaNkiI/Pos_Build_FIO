@@ -9,6 +9,8 @@ import Loyalty from './pages/Loyalty';
 import Profile from './pages/Profile';
 import Cart from './pages/Cart';
 import Product from './pages/Product';
+import Checkout from './pages/Checkout';
+import OrderConfirmation from './pages/OrderConfirmation';
 
 import { useState } from 'react';
 
@@ -50,6 +52,8 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/product/:id" element={<Product />} />
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
       </Route>
 
       {/* Fallback */}

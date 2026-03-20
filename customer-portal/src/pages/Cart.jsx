@@ -4,53 +4,47 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useCustomerActivityTracking } from '../hooks/useCustomerActivityTracking';
 import API from '../services/api';
-import { Trash2, ArrowLeft, Receipt, CheckCircle, Loader2, Sparkles, Coins } from 'lucide-react';
+import { Trash2, ArrowLeft, Receipt, Sparkles, Coins, ChevronRight } from 'lucide-react';
 import AddToCartButton from '../components/AddToCartButton';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const formatCurrency = (v) => `₹${Number(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`;
 
 const Cart = () => {
-    const { cart, totalItems, subtotal, clearCart, removeFromCart } = useCart();
-    const { customer } = useAuth();
-    const { trackPageVisit, trackPurchase } = useCustomerActivityTracking();
+    const { cart, totalItems, subtotal } = useCart();
+    useAuth();
+    const { trackPageVisit } = useCustomerActivityTracking();
     const navigate = useNavigate();
 
-    const [placingOrder, setPlacingOrder] = useState(false);
-    const [orderPlaced, setOrderPlaced] = useState(false);
-    const [error, setError] = useState('');
     const [loyaltyPoints, setLoyaltyPoints] = useState(0);
     const [pointsToRedeem, setPointsToRedeem] = useState(0);
-    const [pointValue, setPointValue] = useState(1); // 1 point = ₹1 default
+    const [pointValue, setPointValue] = useState(1);
     const [loyaltySettings, setLoyaltySettings] = useState(null);
-
-    useEffect(() => {
-        trackPageVisit('/cart');
-        fetchLoyaltyData();
-    }, []);
 
     const fetchLoyaltyData = async () => {
         try {
-            // Fetch customer's current points
             const customerRes = await API.get('/auth/me');
             if (customerRes.data.success) {
                 setLoyaltyPoints(customerRes.data.data.loyaltyPoints || 0);
             }
 
-            // Fetch loyalty settings for point value
             const settingsRes = await API.get('/loyalty-settings');
             if (settingsRes.data.success && settingsRes.data.data) {
                 setLoyaltySettings(settingsRes.data.data);
-                // Calculate point value (redeemValue / pointsRequired)
                 const settings = settingsRes.data.data;
                 if (settings.pointsRequired && settings.redeemValue) {
                     setPointValue(settings.redeemValue / settings.pointsRequired);
                 }
             }
-        } catch (error) {
-            console.error('Failed to fetch loyalty data', error);
+        } catch (err) {
+            console.error('Failed to fetch loyalty data', err);
         }
     };
+
+    useEffect(() => {
+        trackPageVisit('/cart');
+        fetchLoyaltyData();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handlePointsChange = (e) => {
         const value = parseInt(e.target.value) || 0;
@@ -58,64 +52,19 @@ const Cart = () => {
         setPointsToRedeem(Math.min(value, maxPoints));
     };
 
-    const taxAmount = subtotal * 0.05; // 5% GST assumption
+    const taxAmount = subtotal * 0.05;
     const pointDiscount = pointsToRedeem * pointValue;
     const grandTotal = Math.max(0, subtotal + taxAmount - pointDiscount);
-    const pointsToEarn = Math.floor(subtotal * (loyaltySettings?.earnRate || 0.1)); // Default 10% earn rate
+    const pointsToEarn = Math.floor(subtotal * (loyaltySettings?.earnRate || 0.1));
 
-    const handlePlaceOrder = async () => {
-        setPlacingOrder(true);
-        setError('');
-
-        try {
-            // Map cart items for backend
-            const items = cart.map(item => ({
-                product: item.product._id,
-                quantity: item.quantity,
-                price: item.price
-            }));
-
-            const orderData = {
-                items,
-                pointsToRedeem: pointsToRedeem > 0 ? pointsToRedeem : undefined,
-                pointDiscount: pointsToRedeem > 0 ? pointDiscount : undefined
-            };
-
-            await API.post('/auth/orders', orderData);
-
-            // Track purchase
-            trackPurchase(null, grandTotal);
-
-            setOrderPlaced(true);
-            setTimeout(() => {
-                clearCart();
-                navigate('/');
-            }, 3000);
-
-        } catch (err) {
-            console.error('Failed to place order:', err);
-            setError(err.response?.data?.error || err.response?.data?.message || 'Order failed. Please try again.');
-        } finally {
-            setPlacingOrder(false);
-        }
+    const handleProceedToCheckout = () => {
+        navigate('/checkout', {
+            state: {
+                pointsToRedeem: pointsToRedeem > 0 ? pointsToRedeem : 0,
+                pointDiscount: pointsToRedeem > 0 ? pointDiscount : 0,
+            }
+        });
     };
-
-    if (orderPlaced) {
-        return (
-            <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 animate-fade-in">
-                <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                >
-                    <CheckCircle className="w-24 h-24 text-emerald-500 mb-6" />
-                </motion.div>
-                <h1 className="text-3xl font-bold text-center mb-2">Order Received!</h1>
-                <p className="text-muted-foreground text-center">Your items will be prepared shortly.</p>
-                <p className="text-xs text-muted-foreground mt-8 animate-pulse">Redirecting to home...</p>
-            </div>
-        );
-    }
 
     if (cart.length === 0) {
         return (
@@ -277,32 +226,26 @@ const Cart = () => {
                         </div>
                     </div>
                 </div>
-
-                {error && (
-                    <div className="bg-destructive/10 text-destructive text-sm font-medium p-4 rounded-2xl text-center">
-                        {error}
-                    </div>
-                )}
             </div>
 
             {/* Sticky Checkout Bar */}
             <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-border/50 p-4 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
                 <div className="flex items-center gap-4 mb-3">
                     <div className="flex-1">
-                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Pay Using</p>
-                        <p className="font-semibold mt-0.5">Pay at Store</p>
+                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">To Pay</p>
+                        <p className="font-bold text-lg text-blue-600 mt-0.5">{formatCurrency(grandTotal)}</p>
                     </div>
+                    {pointsToEarn > 0 && (
+                        <div className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-3 py-1.5 rounded-full">
+                            +{pointsToEarn} pts earned
+                        </div>
+                    )}
                 </div>
                 <button
-                    onClick={handlePlaceOrder}
-                    disabled={placingOrder}
-                    className="w-full bg-primary text-primary-foreground font-bold text-lg py-4 rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/30 outline-none transition-all active:scale-[0.98] disabled:opacity-70 flex justify-center items-center h-14"
+                    onClick={handleProceedToCheckout}
+                    className="w-full bg-blue-600 text-white font-black text-lg py-4 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 outline-none transition-all active:scale-[0.98] flex justify-center items-center gap-2 h-14 uppercase tracking-widest"
                 >
-                    {placingOrder ? (
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                    ) : (
-                        `Place Order • ${formatCurrency(grandTotal)}`
-                    )}
+                    PROCEED TO CHECKOUT <ChevronRight className="w-5 h-5" />
                 </button>
             </div>
         </div>
