@@ -5,7 +5,8 @@ import { useCustomerActivityTracking } from '../hooks/useCustomerActivityTrackin
 import API from '../services/api';
 import {
     Loader2, ArrowLeft, Plus, Minus, Store as StoreIcon,
-    MapPin, Tag, Package, Building2, Barcode, Shield, Calendar, ChevronRight
+    MapPin, Tag, Package, Building2, Barcode, Shield, Calendar, ChevronRight,
+    AlertTriangle, CheckCircle, X
 } from 'lucide-react';
 
 const Product = () => {
@@ -174,6 +175,23 @@ const Product = () => {
                             )}
                         </div>
 
+                        {/* Stock Status */}
+                        <div className="flex items-center gap-2">
+                            {product.stockQty > 10 ? (
+                                <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-black px-3 py-1.5 rounded-full uppercase tracking-wider">
+                                    <CheckCircle className="w-3.5 h-3.5" /> IN STOCK ({product.stockQty} available)
+                                </span>
+                            ) : product.stockQty > 0 ? (
+                                <span className="flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-black px-3 py-1.5 rounded-full uppercase tracking-wider">
+                                    <AlertTriangle className="w-3.5 h-3.5" /> ONLY {product.stockQty} LEFT
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-1.5 bg-red-50 text-red-700 text-xs font-black px-3 py-1.5 rounded-full uppercase tracking-wider">
+                                    <X className="w-3.5 h-3.5" /> OUT OF STOCK
+                                </span>
+                            )}
+                        </div>
+
                         {/* Store Info */}
                         {product.storeInfo && (
                             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center gap-3">
@@ -227,7 +245,14 @@ const Product = () => {
 
                         {/* Add to Cart */}
                         <div className="mt-2">
-                            {quantity === 0 ? (
+                            {product.stockQty <= 0 ? (
+                                <button
+                                    disabled
+                                    className="w-full bg-gray-300 text-gray-500 font-black uppercase tracking-widest py-4 rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    OUT OF STOCK
+                                </button>
+                            ) : quantity === 0 ? (
                                 <button
                                     onClick={handleAddToCart}
                                     className="w-full bg-blue-600 text-white font-black uppercase tracking-widest py-4 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
