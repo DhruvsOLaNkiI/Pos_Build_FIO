@@ -1,5 +1,6 @@
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, Store as StoreIcon } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { Link } from 'react-router-dom';
 
 const GopuffProductCard = ({ product, className = "" }) => {
   const { addToCart, removeFromCart, cart } = useCart();
@@ -16,7 +17,7 @@ const GopuffProductCard = ({ product, className = "" }) => {
   const price = product.sellingPrice || product.price || 0;
 
   return (
-    <div className={`flex flex-col gap-2 group cursor-pointer h-full ${className}`}>
+    <Link to={`/product/${product._id}`} className={`flex flex-col gap-2 group cursor-pointer h-full ${className}`}>
       <div className="relative bg-[#f8f9fa] rounded-xl p-4 aspect-square flex items-center justify-center border border-gray-100 group-hover:border-gray-200 transition-colors mb-2">
         {product.badge && (
           <div className="absolute top-2 left-2 text-[9px] font-black px-1.5 py-0.5 rounded-sm z-10 uppercase tracking-tighter bg-purple-100 text-purple-800">
@@ -75,6 +76,12 @@ const GopuffProductCard = ({ product, className = "" }) => {
           )}
         </div>
         <div className="flex flex-col gap-1 mt-auto">
+          {product.storeName && (
+            <div className="flex items-center gap-1 text-blue-600 text-[9px] font-black uppercase tracking-tighter">
+              <StoreIcon className="w-3 h-3" />
+              {product.storeName}
+            </div>
+          )}
           {product.promo && (
             <div className="bg-green-100 text-green-800 text-[9px] font-black px-1.5 py-0.5 rounded w-fit uppercase tracking-tighter italic">
               {product.promo}
@@ -95,7 +102,7 @@ const GopuffProductCard = ({ product, className = "" }) => {
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 

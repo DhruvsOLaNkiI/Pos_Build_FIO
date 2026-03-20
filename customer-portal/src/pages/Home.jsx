@@ -100,6 +100,8 @@ const Home = () => {
 
     const handleClearLocation = () => {
         localStorage.removeItem('customer_pincode');
+        localStorage.removeItem('customer_store_name');
+        localStorage.removeItem('customer_store_id');
         setCurrentPincode(null);
         setNearbyStoresData([]);
     };

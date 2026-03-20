@@ -8,6 +8,7 @@ import Offers from './pages/Offers';
 import Loyalty from './pages/Loyalty';
 import Profile from './pages/Profile';
 import Cart from './pages/Cart';
+import Product from './pages/Product';
 
 import { useState } from 'react';
 
@@ -48,6 +49,7 @@ function App() {
         <Route path="/loyalty" element={<Loyalty />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/cart" element={<Cart />} />
+        <Route path="/product/:id" element={<Product />} />
       </Route>
 
       {/* Fallback */}

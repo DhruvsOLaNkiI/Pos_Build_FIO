@@ -117,6 +117,65 @@ router.get('/products', async (req, res, next) => {
     }
 });
 
+// @desc    Get Single Product Detail with Variants (Public)
+// @route   GET /api/customer-app/products/:id
+// @access  Public
+router.get('/products/:id', async (req, res, next) => {
+    try {
+        const product = await Product.findById(req.params.id)
+            .populate('storeId', 'name code address pincode contactNumber')
+            .populate('unit', 'name shortName')
+            .select('-purchasePrice -stockQty -warehouseStock -minStockLevel -batches -inventoryItemId -__v');
+
+        if (!product) {
+            res.status(404);
+            return next(new Error('Product not found'));
+        }
+
+        // If product is Variable type, find sibling variants (same name, different variant)
+        let variants = [];
+        if (product.productType === 'Variable' && product.name) {
+            variants = await Product.find({
+                name: product.name,
+                companyId: product.companyId,
+                isActive: true,
+                _id: { $ne: product._id }
+            })
+                .populate('storeId', 'name code')
+                .select('-purchasePrice -stockQty -warehouseStock -minStockLevel -batches -inventoryItemId -__v');
+        }
+
+        // Build store info
+        const storeInfo = product.storeId ? {
+            _id: product.storeId._id,
+            name: product.storeId.name,
+            code: product.storeId.code,
+            address: product.storeId.address,
+            pincode: product.storeId.pincode,
+            contactNumber: product.storeId.contactNumber
+        } : null;
+
+        res.status(200).json({
+            success: true,
+            data: {
+                product: {
+                    ...product.toObject(),
+                    storeName: storeInfo?.name || '',
+                    storeCode: storeInfo?.code || '',
+                    storeInfo
+                },
+                variants: variants.map(v => ({
+                    ...v.toObject(),
+                    storeName: v.storeId?.name || '',
+                    storeCode: v.storeId?.code || ''
+                }))
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // @desc    Get Active Offers (Public)
 // @route   GET /api/customer-app/offers
 // @access  Public
@@ -176,13 +235,22 @@ router.get('/stores/nearby', async (req, res, next) => {
             });
         }
 
-        // For each store, fetch its products
+        // For each store, fetch its products and attach store info to each product
         const storesWithProducts = await Promise.all(
             stores.map(async (store) => {
                 const products = await Product.find({
                     storeId: store._id,
                     isActive: true
                 }).select('-purchasePrice -stock -reorderLevel -supplier -__v');
+
+                // Attach store name, code, and id to each product so frontend can display it
+                const productsWithStore = products.map(p => {
+                    const prod = p.toObject();
+                    prod.storeName = store.name;
+                    prod.storeCode = store.code;
+                    prod.storeId = store._id;
+                    return prod;
+                });
 
                 return {
                     store: {
@@ -193,7 +261,7 @@ router.get('/stores/nearby', async (req, res, next) => {
                         pincode: store.pincode,
                         contactNumber: store.contactNumber
                     },
-                    products
+                    products: productsWithStore
                 };
             })
         );

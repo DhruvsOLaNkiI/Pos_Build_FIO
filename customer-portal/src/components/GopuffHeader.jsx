@@ -1,25 +1,22 @@
 import { Search, User, ShoppingBag, ChevronDown, Star, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import LocationPickerModal from './LocationPickerModal';
 
 const GopuffHeader = ({ onViewHome, onViewAccount }) => {
     const { customer } = useAuth();
     const { totalItems } = useCart();
-    const navigate = useNavigate();
     
     const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-    const [currentPincode, setCurrentPincode] = useState('SET LOCATION');
-
-    useEffect(() => {
-        const saved = localStorage.getItem('customer_pincode');
-        if (saved) setCurrentPincode(saved);
-    }, []);
+    const [currentPincode, setCurrentPincode] = useState(() => localStorage.getItem('customer_pincode') || 'SET LOCATION');
+    const [currentStoreName, setCurrentStoreName] = useState(() => localStorage.getItem('customer_store_name') || '');
 
     const handleLocationSelect = (pincode) => {
         setCurrentPincode(pincode);
+        const savedStore = localStorage.getItem('customer_store_name');
+        if (savedStore) setCurrentStoreName(savedStore);
         // Dispatch custom event so the product grid can reload
         window.dispatchEvent(new CustomEvent('locationChanged', { detail: pincode }));
     };
@@ -77,7 +74,13 @@ const GopuffHeader = ({ onViewHome, onViewAccount }) => {
                         className="flex items-center gap-1.5 hover:text-blue-600 transition-colors bg-gray-100 px-3 py-1.5 rounded-full"
                     >
                         <MapPin className="h-3 w-3 text-blue-600" />
-                        {currentPincode} <ChevronDown className="h-3 w-3" />
+                        <span className="flex items-center gap-1">
+                            {currentPincode}
+                            {currentStoreName && (
+                                <span className="text-gray-400 font-bold">• {currentStoreName.split(' · ')[0]}</span>
+                            )}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
                     </button>
                 </div>
             </div>
