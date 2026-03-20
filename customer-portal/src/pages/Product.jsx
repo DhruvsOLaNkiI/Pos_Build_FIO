@@ -154,8 +154,8 @@ const Product = () => {
                         {/* Variant Info */}
                         {product.variant && (
                             <div className="flex items-center gap-2">
-                                <Tag className="w-4 h-4 text-gray-400" />
-                                <span className="text-sm font-bold text-gray-600 uppercase">{product.variant}</span>
+                                <Tag className="w-4 h-4 text-gray-600" />
+                                <span className="text-sm font-bold text-gray-800 uppercase">{product.variant}</span>
                             </div>
                         )}
 
@@ -163,7 +163,7 @@ const Product = () => {
                         <div className="flex items-baseline gap-3 flex-wrap">
                             <span className="font-extrabold text-4xl text-black">₹{price.toLocaleString()}</span>
                             {product.gstPercent > 0 && (
-                                <span className="text-xs font-bold text-gray-400">+ ₹{gstAmount} GST ({product.gstPercent}%)</span>
+                                <span className="text-xs font-bold text-gray-600">+ ₹{gstAmount} GST ({product.gstPercent}%)</span>
                             )}
                         </div>
 
@@ -204,16 +204,16 @@ const Product = () => {
                         {/* Variant Selector */}
                         {variants.length > 0 && (
                             <div>
-                                <h3 className="font-black text-xs uppercase tracking-widest text-gray-500 mb-3">SELECT VARIANT</h3>
+                                <h3 className="font-black text-xs uppercase tracking-widest text-gray-600 mb-3">SELECT VARIANT</h3>
                                 <div className="flex flex-wrap gap-2">
                                     {variants.map(v => (
                                         <Link
                                             key={v._id}
                                             to={`/product/${v._id}`}
-                                            className={`border-2 rounded-xl px-4 py-2 text-sm font-bold uppercase transition-all hover:border-blue-400 ${v._id === product._id ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-700'}`}
+                                            className={`border-2 rounded-xl px-4 py-2 text-sm font-bold uppercase transition-all hover:border-blue-400 ${v._id === product._id ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-800'}`}
                                         >
                                             {v.variant || v.name}
-                                            <span className="block text-[10px] font-black text-gray-400 mt-0.5">₹{v.sellingPrice?.toLocaleString()}</span>
+                                            <span className="block text-[10px] font-black text-gray-600 mt-0.5">₹{v.sellingPrice?.toLocaleString()}</span>
                                         </Link>
                                     ))}
                                     {product.variant && (
@@ -251,42 +251,42 @@ const Product = () => {
 
                         {/* Product Details */}
                         <div className="border-t border-gray-100 pt-6 mt-2">
-                            <h3 className="font-black text-xs uppercase tracking-widest text-gray-500 mb-4">PRODUCT DETAILS</h3>
+                            <h3 className="font-black text-xs uppercase tracking-widest text-gray-600 mb-4">PRODUCT DETAILS</h3>
                             <div className="grid grid-cols-2 gap-3">
                                 {product.manufacturer && (
                                     <div className="flex items-center gap-2 text-sm">
-                                        <Building2 className="w-4 h-4 text-gray-400" />
-                                        <div><p className="text-[10px] text-gray-400 font-bold uppercase">Manufacturer</p><p className="font-bold text-gray-800">{product.manufacturer}</p></div>
+                                        <Building2 className="w-4 h-4 text-gray-600" />
+                                        <div><p className="text-[10px] text-gray-500 font-bold uppercase">Manufacturer</p><p className="font-bold text-gray-900">{product.manufacturer}</p></div>
                                     </div>
                                 )}
                                 {product.warranty && (
                                     <div className="flex items-center gap-2 text-sm">
-                                        <Shield className="w-4 h-4 text-gray-400" />
-                                        <div><p className="text-[10px] text-gray-400 font-bold uppercase">Warranty</p><p className="font-bold text-gray-800">{product.warranty}</p></div>
+                                        <Shield className="w-4 h-4 text-gray-600" />
+                                        <div><p className="text-[10px] text-gray-500 font-bold uppercase">Warranty</p><p className="font-bold text-gray-900">{product.warranty}</p></div>
                                     </div>
                                 )}
                                 {product.barcode && (
                                     <div className="flex items-center gap-2 text-sm">
-                                        <Barcode className="w-4 h-4 text-gray-400" />
-                                        <div><p className="text-[10px] text-gray-400 font-bold uppercase">Barcode</p><p className="font-bold text-gray-800">{product.barcode}</p></div>
+                                        <Barcode className="w-4 h-4 text-gray-600" />
+                                        <div><p className="text-[10px] text-gray-500 font-bold uppercase">Barcode</p><p className="font-bold text-gray-900">{product.barcode}</p></div>
                                     </div>
                                 )}
                                 {product.expiryDate && (
                                     <div className="flex items-center gap-2 text-sm">
-                                        <Calendar className="w-4 h-4 text-gray-400" />
-                                        <div><p className="text-[10px] text-gray-400 font-bold uppercase">Expiry</p><p className="font-bold text-gray-800">{new Date(product.expiryDate).toLocaleDateString()}</p></div>
+                                        <Calendar className="w-4 h-4 text-gray-600" />
+                                        <div><p className="text-[10px] text-gray-500 font-bold uppercase">Expiry</p><p className="font-bold text-gray-900">{new Date(product.expiryDate).toLocaleDateString()}</p></div>
                                     </div>
                                 )}
                                 {product.unit && (
                                     <div className="flex items-center gap-2 text-sm">
-                                        <Package className="w-4 h-4 text-gray-400" />
-                                        <div><p className="text-[10px] text-gray-400 font-bold uppercase">Unit</p><p className="font-bold text-gray-800">{product.unit?.name || product.unit?.shortName || ''}</p></div>
+                                        <Package className="w-4 h-4 text-gray-600" />
+                                        <div><p className="text-[10px] text-gray-500 font-bold uppercase">Unit</p><p className="font-bold text-gray-900">{product.unit?.name || product.unit?.shortName || ''}</p></div>
                                     </div>
                                 )}
                                 {product.gstPercent > 0 && (
                                     <div className="flex items-center gap-2 text-sm">
-                                        <Tag className="w-4 h-4 text-gray-400" />
-                                        <div><p className="text-[10px] text-gray-400 font-bold uppercase">GST</p><p className="font-bold text-gray-800">{product.gstPercent}%</p></div>
+                                        <Tag className="w-4 h-4 text-gray-600" />
+                                        <div><p className="text-[10px] text-gray-500 font-bold uppercase">GST</p><p className="font-bold text-gray-900">{product.gstPercent}%</p></div>
                                     </div>
                                 )}
                             </div>
@@ -295,7 +295,7 @@ const Product = () => {
                         {/* Variants from other stores */}
                         {variants.filter(v => v.storeName && v.storeName !== product.storeName).length > 0 && (
                             <div className="border-t border-gray-100 pt-6">
-                                <h3 className="font-black text-xs uppercase tracking-widest text-gray-500 mb-4">ALSO AVAILABLE AT</h3>
+                                <h3 className="font-black text-xs uppercase tracking-widest text-gray-600 mb-4">ALSO AVAILABLE AT</h3>
                                 <div className="space-y-2">
                                     {variants.filter(v => v.storeName && v.storeName !== product.storeName).map(v => (
                                         <Link key={v._id} to={`/product/${v._id}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
@@ -303,12 +303,12 @@ const Product = () => {
                                                 <StoreIcon className="w-4 h-4 text-blue-600" />
                                                 <div>
                                                     <p className="font-bold text-sm text-gray-900">{v.storeName}</p>
-                                                    <p className="text-[10px] text-gray-400 font-bold uppercase">{v.variant || v.name}</p>
+                                                    <p className="text-[10px] text-gray-600 font-bold uppercase">{v.variant || v.name}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="font-extrabold text-sm">₹{v.sellingPrice?.toLocaleString()}</span>
-                                                <ChevronRight className="w-4 h-4 text-gray-400" />
+                                                <span className="font-extrabold text-sm text-gray-900">₹{v.sellingPrice?.toLocaleString()}</span>
+                                                <ChevronRight className="w-4 h-4 text-gray-600" />
                                             </div>
                                         </Link>
                                     ))}

@@ -42,32 +42,32 @@ import {
 
 const navItems = [
     // Core Business
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['owner', 'cashier', 'staff'], category: 'Core' },
-    { icon: ShoppingCart, label: 'Billing', path: '/billing', roles: ['owner', 'cashier'], category: 'Core' },
-    { icon: Users, label: 'Customers', path: '/customers', roles: ['owner', 'cashier', 'staff'], category: 'Core' },
-    { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['owner'], category: 'Core' },
-    { icon: Wallet, label: 'Expenses', path: '/expenses', roles: ['owner'], category: 'Core' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['owner', 'cashier', 'staff'], category: 'Core', permission: 'dashboard' },
+    { icon: ShoppingCart, label: 'Billing', path: '/billing', roles: ['owner', 'cashier'], category: 'Core', permission: 'billing' },
+    { icon: Users, label: 'Customers', path: '/customers', roles: ['owner', 'cashier', 'staff'], category: 'Core', permission: 'customers' },
+    { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['owner'], category: 'Core', permission: 'reports' },
+    { icon: Wallet, label: 'Expenses', path: '/expenses', roles: ['owner'], category: 'Core', permission: 'expenses' },
 
     // Inventory & Products
-    { icon: Package, label: 'Products', path: '/products', roles: ['owner', 'cashier', 'staff'], category: 'Inventory' },
-    { icon: PlusSquare, label: 'Create Product', path: '/products/new', roles: ['owner', 'staff'], category: 'Inventory' },
-    { icon: Warehouse, label: 'Warehouse Inventory', path: '/inventory', roles: ['owner', 'cashier', 'staff'], category: 'Inventory' },
-    { icon: AlertTriangle, label: 'Expire Product', path: '/expired-products', roles: ['owner', 'staff'], category: 'Inventory' },
-    { icon: Scale, label: 'Units', path: '/units', roles: ['owner'], category: 'Inventory' },
-    { icon: Store, label: 'Stores', path: '/stores', roles: ['owner'], category: 'Inventory' },
-    { icon: Building, label: 'Warehouses', path: '/warehouses', roles: ['owner'], category: 'Inventory' },
+    { icon: Package, label: 'Products', path: '/products', roles: ['owner', 'cashier', 'staff'], category: 'Inventory', permission: 'products' },
+    { icon: PlusSquare, label: 'Create Product', path: '/products/new', roles: ['owner', 'staff'], category: 'Inventory', permission: 'create_products' },
+    { icon: Warehouse, label: 'Warehouse Inventory', path: '/inventory', roles: ['owner', 'cashier', 'staff'], category: 'Inventory', permission: 'warehouse_inventory' },
+    { icon: AlertTriangle, label: 'Expire Product', path: '/expired-products', roles: ['owner', 'staff'], category: 'Inventory', permission: 'expired_products' },
+    { icon: Scale, label: 'Units', path: '/units', roles: ['owner'], category: 'Inventory', permission: 'units' },
+    { icon: Store, label: 'Stores', path: '/stores', roles: ['owner'], category: 'Inventory', permission: 'stores' },
+    { icon: Building, label: 'Warehouses', path: '/warehouses', roles: ['owner'], category: 'Inventory', permission: 'warehouses' },
 
     // Operations & Supply
-    { icon: Truck, label: 'Suppliers', path: '/suppliers', roles: ['owner'], category: 'Supply Chain' },
-    { icon: ClipboardList, label: 'Purchases', path: '/purchases', roles: ['owner'], category: 'Supply Chain' },
-    { icon: PackageSearch, label: 'Order Tracking', path: '/order-tracking', roles: ['owner'], category: 'Supply Chain' },
+    { icon: Truck, label: 'Suppliers', path: '/suppliers', roles: ['owner'], category: 'Supply Chain', permission: 'suppliers' },
+    { icon: ClipboardList, label: 'Purchases', path: '/purchases', roles: ['owner'], category: 'Supply Chain', permission: 'purchases' },
+    { icon: PackageSearch, label: 'Order Tracking', path: '/order-tracking', roles: ['owner'], category: 'Supply Chain', permission: 'order_tracking' },
 
     // Management
-    { icon: UserCog, label: 'People', path: '/employees', roles: ['owner', 'cashier', 'staff'], category: 'Management' },
-    { icon: Sparkles, label: 'Loyalty & Offers', path: '/loyalty', roles: ['owner'], category: 'Management' },
-    { icon: Globe, label: 'Online Orders', path: '/online-orders', roles: ['owner', 'cashier'], category: 'Management' },
-    { icon: Bell, label: 'Alerts', path: '/alerts', roles: ['owner', 'staff'], category: 'Management' },
-    { icon: Settings, label: 'Settings', path: '/settings', roles: ['owner'], category: 'Management' },
+    { icon: UserCog, label: 'People', path: '/employees', roles: ['owner', 'cashier', 'staff'], category: 'Management', permission: 'employees' },
+    { icon: Sparkles, label: 'Loyalty & Offers', path: '/loyalty', roles: ['owner'], category: 'Management', permission: 'loyalty' },
+    { icon: Globe, label: 'Online Orders', path: '/online-orders', roles: ['owner', 'cashier'], category: 'Management', permission: 'online_orders' },
+    { icon: Bell, label: 'Alerts', path: '/alerts', roles: ['owner', 'staff'], category: 'Management', permission: 'alerts' },
+    { icon: Settings, label: 'Settings', path: '/settings', roles: ['owner'], category: 'Management', permission: 'settings' },
 ];
 
 const superAdminNavItems = [
@@ -91,9 +91,25 @@ const Sidebar = () => {
 
     const isSuperAdmin = user?.role === 'super-admin';
 
+    // Check if user has access to a nav item (role-based OR permission-based)
+    const hasAccess = (item) => {
+        if (!item) return false;
+        // Owner and super-admin have full access
+        if (user?.role === 'owner' || user?.role === 'super-admin') return true;
+        // Check role first
+        if (!item.roles.includes(user?.role)) return false;
+        // For staff/cashier, check permissions array
+        if (user?.role === 'cashier' || user?.role === 'staff') {
+            // If no permission key, allow by default (role-only pages)
+            if (!item.permission) return true;
+            return user?.permissions?.includes(item.permission);
+        }
+        return true;
+    };
+
     const filteredNavItems = isSuperAdmin
         ? superAdminNavItems
-        : navItems.filter((item) => item.roles.includes(user?.role));
+        : navItems.filter(item => hasAccess(item));
 
     const handleLogout = async () => {
         await logout();

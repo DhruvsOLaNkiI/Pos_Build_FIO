@@ -5,8 +5,79 @@ const Customer = require('../models/Customer');
 const Product = require('../models/Product');
 const Sale = require('../models/Sale');
 const Store = require('../models/Store');
+const Company = require('../models/Company');
 const CustomerAddress = require('../models/CustomerAddress');
 const { protect } = require('../middleware/authMiddleware'); // For protected customer routes later if needed
+
+// @desc    Get All Active Companies (for company selection screen)
+// @route   GET /api/customer-app/companies
+// @access  Public
+router.get('/companies', async (req, res, next) => {
+    try {
+        const companies = await Company.find({ isActive: true }).select('name email phone address logo plan');
+        
+        // Enrich with store count
+        const enrichedCompanies = await Promise.all(companies.map(async (company) => {
+            const stores = await Store.find({ companyId: company._id, isActive: true })
+                .select('name code address pincode');
+            return {
+                ...company.toObject(),
+                stores: stores
+            };
+        }));
+
+        res.status(200).json({
+            success: true,
+            count: enrichedCompanies.length,
+            data: enrichedCompanies
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Get Single Company Details with Products
+// @route   GET /api/customer-app/companies/:id
+// @access  Public
+router.get('/companies/:id', async (req, res, next) => {
+    try {
+        const company = await Company.findById(req.params.id);
+        
+        if (!company || !company.isActive) {
+            res.status(404);
+            return next(new Error('Company not found'));
+        }
+
+        // Get stores
+        const stores = await Store.find({ companyId: company._id, isActive: true })
+            .select('name code address pincode');
+
+        // Get products from all stores of this company
+        const storeIds = stores.map(s => s._id);
+        const products = await Product.find({ 
+            storeId: { $in: storeIds }, 
+            isActive: true 
+        }).select('-purchasePrice -__v');
+
+        res.status(200).json({
+            success: true,
+            data: {
+                company: {
+                    _id: company._id,
+                    name: company.name,
+                    email: company.email,
+                    phone: company.phone,
+                    address: company.address,
+                    logo: company.logo
+                },
+                stores,
+                products
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
 
 // @desc    Customer Login
 // @route   POST /api/customer-app/auth/login

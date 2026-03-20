@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import GopuffBanner from './components/GopuffBanner';
 import GopuffHeader from './components/GopuffHeader';
 import Login from './pages/Login';
+import CompanySelection from './pages/CompanySelection';
 import Home from './pages/Home';
 import Offers from './pages/Offers';
 import Loyalty from './pages/Loyalty';
@@ -44,6 +45,11 @@ function App() {
       {/* Public Auth Route */}
       <Route path="/login" element={<Login />} />
 
+      {/* Company Selection (Protected) */}
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/select-company" element={<CompanySelection />} />
+      </Route>
+
       {/* Main App Routes (Protected via Customer ID) */}
       <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/" element={<Home />} />
@@ -57,7 +63,7 @@ function App() {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
