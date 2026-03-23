@@ -29,8 +29,21 @@ export const CartProvider = ({ children }) => {
                         : item
                 );
             } else {
-                // Add new item
-                return [...prevCart, { product, quantity: 1, price: product.sellingPrice }];
+                // Add new item - use offer price if available
+                const effectivePrice = product.offerValue
+                    ? (product.offerType === 'percentage'
+                        ? Math.round(product.sellingPrice * (1 - product.offerValue / 100))
+                        : Math.max(0, product.sellingPrice - product.offerValue))
+                    : product.sellingPrice;
+
+                return [...prevCart, {
+                    product,
+                    quantity: 1,
+                    price: effectivePrice,
+                    originalPrice: product.sellingPrice,
+                    hasOffer: !!product.offerValue,
+                    offerLabel: product.offerType === 'percentage' ? `${product.offerValue}% OFF` : `₹${product.offerValue} OFF`
+                }];
             }
         });
     };

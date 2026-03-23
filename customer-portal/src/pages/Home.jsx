@@ -182,8 +182,25 @@ const Home = () => {
                     break;
             }
         }
-        return result;
-    }, [activeProducts, filters]);
+        return result.map(p => {
+            const matchedOffer = offers.find(o => 
+                o.applicableTo === 'all' || 
+                (o.applicableTo === 'category' && o.applicableCategory && p.category && o.applicableCategory.toLowerCase() === p.category.toLowerCase()) ||
+                (o.applicableTo === 'product' && o.applicableProduct && p._id === o.applicableProduct)
+            );
+            if (matchedOffer) {
+                return {
+                    ...p,
+                    offerType: matchedOffer.type,
+                    offerValue: matchedOffer.discountValue,
+                    oldPrice: matchedOffer.type === 'percentage' 
+                        ? Math.round(p.sellingPrice / (1 - matchedOffer.discountValue / 100))
+                        : (matchedOffer.type === 'flat' ? p.sellingPrice + matchedOffer.discountValue : null)
+                };
+            }
+            return p;
+        });
+    }, [activeProducts, filters, offers]);
 
     // Dynamically group products by category
     const categoryGroups = useMemo(() => {
@@ -203,21 +220,45 @@ const Home = () => {
             return offers.some(o => 
                 o.applicableTo === 'all' || 
                 (o.applicableTo === 'category' && o.applicableCategory && p.category && o.applicableCategory.toLowerCase() === p.category.toLowerCase()) ||
-                (o.applicableTo === 'product' && o.applicableProduct && p._id === o.applicableProduct) // If they ever add product specific
+                (o.applicableTo === 'product' && o.applicableProduct && p._id === o.applicableProduct)
             );
-        }).slice(0, 15).map(p => ({
-            ...p,
-            badge: "OFFER APPLIED",
-            famPromo: "Deal Available" // Just a visual cue
-        }));
+        }).slice(0, 15).map(p => {
+            const matchedOffer = offers.find(o => 
+                o.applicableTo === 'all' || 
+                (o.applicableTo === 'category' && o.applicableCategory && p.category && o.applicableCategory.toLowerCase() === p.category.toLowerCase()) ||
+                (o.applicableTo === 'product' && o.applicableProduct && p._id === o.applicableProduct)
+            );
+            return {
+                ...p,
+                badge: "OFFER APPLIED",
+                famPromo: "Deal Available",
+                offerType: matchedOffer?.type,
+                offerValue: matchedOffer?.discountValue,
+                oldPrice: matchedOffer?.type === 'percentage' 
+                    ? Math.round(p.sellingPrice / (1 - (matchedOffer?.discountValue || 0) / 100))
+                    : (matchedOffer?.type === 'flat' ? p.sellingPrice + (matchedOffer?.discountValue || 0) : null)
+            };
+        });
     }, [activeProducts, offers]);
 
     // Static categorizations for fallback (when no pincode)
-    const trendingProducts = activeProducts.slice(0, 10).map(p => ({
-        ...p,
-        badge: Math.random() > 0.7 ? "NEW" : null,
-        famPromo: Math.random() > 0.8 ? "$4.19 Member Price" : null
-    }));
+    const trendingProducts = activeProducts.slice(0, 10).map(p => {
+        const matchedOffer = offers.find(o => 
+            o.applicableTo === 'all' || 
+            (o.applicableTo === 'category' && o.applicableCategory && p.category && o.applicableCategory.toLowerCase() === p.category.toLowerCase()) ||
+            (o.applicableTo === 'product' && o.applicableProduct && p._id === o.applicableProduct)
+        );
+        return {
+            ...p,
+            badge: matchedOffer ? "OFFER" : (Math.random() > 0.7 ? "NEW" : null),
+            famPromo: matchedOffer ? "Deal Available" : (Math.random() > 0.8 ? "$4.19 Member Price" : null),
+            offerType: matchedOffer?.type,
+            offerValue: matchedOffer?.discountValue,
+            oldPrice: matchedOffer?.type === 'percentage' 
+                ? Math.round(p.sellingPrice / (1 - (matchedOffer?.discountValue || 0) / 100))
+                : (matchedOffer?.type === 'flat' ? p.sellingPrice + (matchedOffer?.discountValue || 0) : p.oldPrice || null)
+        };
+    });
 
     const priceDrops = activeProducts.filter(p => (p.sellingPrice < (p.purchasePrice || p.sellingPrice) * 1.5) || (p.name || '').length % 2 === 0).slice(0, 10).map(p => ({
         ...p,
@@ -350,15 +391,34 @@ const Home = () => {
                     <GopuffShopCategoriesGrid />
 
                     {/* Dynamic Category Carousels */}
-                    {Object.entries(categoryGroups).map(([category, catProducts]) => (
-                        <GopuffProductCarousel
-                            key={category}
-                            title={`${category.toUpperCase()}.`}
-                            products={catProducts.slice(0, 15)}
-                            totalItems={catProducts.length}
-                            onMoreClick={() => setView('all-products')}
-                        />
-                    ))}
+                    {Object.entries(categoryGroups).map(([category, catProducts]) => {
+                        const productsWithOffers = catProducts.map(p => {
+                            const matchedOffer = offers.find(o => 
+                                o.applicableTo === 'all' || 
+                                (o.applicableTo === 'category' && o.applicableCategory && p.category && o.applicableCategory.toLowerCase() === p.category.toLowerCase())
+                            );
+                            if (matchedOffer) {
+                                return {
+                                    ...p,
+                                    offerType: matchedOffer.type,
+                                    offerValue: matchedOffer.discountValue,
+                                    oldPrice: matchedOffer.type === 'percentage' 
+                                        ? Math.round(p.sellingPrice / (1 - matchedOffer.discountValue / 100))
+                                        : (matchedOffer.type === 'flat' ? p.sellingPrice + matchedOffer.discountValue : null)
+                                };
+                            }
+                            return p;
+                        });
+                        return (
+                            <GopuffProductCarousel
+                                key={category}
+                                title={`${category.toUpperCase()}.`}
+                                products={productsWithOffers.slice(0, 15)}
+                                totalItems={catProducts.length}
+                                onMoreClick={() => setView('all-products')}
+                            />
+                        );
+                    })}
 
                     {/* Price Drops */}
                     {priceDrops.length > 0 && (

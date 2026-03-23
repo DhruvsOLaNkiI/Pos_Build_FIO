@@ -126,9 +126,17 @@ const Cart = () => {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="font-semibold text-sm line-clamp-2 leading-tight">{item.product.name}</h4>
-                                        <div className="font-bold text-primary mt-1 text-sm">{formatCurrency(item.price)}</div>
+                                    <div className="flex-1 min-w-0 px-1">
+                                        <h4 className="font-bold text-[13px] line-clamp-2 leading-tight uppercase tracking-tight italic text-black">{item.product.name}</h4>
+                                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                            <div className="font-black text-blue-600 text-sm italic">{formatCurrency(item.price)}</div>
+                                            {item.hasOffer && (
+                                                <div className="flex items-center gap-1.5 font-bold">
+                                                    <span className="text-gray-400 text-[10px] line-through italic">{formatCurrency(item.originalPrice)}</span>
+                                                    <span className="text-red-500 text-[9px] bg-red-50 px-1.5 py-0.5 rounded uppercase tracking-tighter italic border border-red-100">{item.offerLabel}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="shrink-0 flex flex-col items-end gap-2">
                                         <AddToCartButton product={item.product} />

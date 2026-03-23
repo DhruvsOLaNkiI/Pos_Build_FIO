@@ -19,6 +19,7 @@ const Product = () => {
 
     const [product, setProduct] = useState(null);
     const [variants, setVariants] = useState([]);
+    const [matchedOffer, setMatchedOffer] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -33,10 +34,27 @@ const Product = () => {
                 setError('');
                 setImgError(false);
                 setSelectedImageIndex(0);
-                const { data } = await API.get(`/products/${id}`);
-                if (data.success) {
-                    setProduct(data.data.product);
-                    setVariants(data.data.variants || []);
+                const [productRes, offersRes] = await Promise.all([
+                    API.get(`/products/${id}`),
+                    API.get('/offers')
+                ]);
+                if (productRes.data.success) {
+                    const prod = productRes.data.product || productRes.data.data.product;
+                    const vars = productRes.data.data?.variants || [];
+                    setProduct(prod);
+                    setVariants(vars);
+
+                    // Find matching offer
+                    if (offersRes.data?.success) {
+                        const offers = offersRes.data.data || [];
+                        const offer = offers.find(o =>
+                            o.applicableTo === 'all' ||
+                            (o.applicableTo === 'category' && o.applicableCategory && prod.category &&
+                                o.applicableCategory.toLowerCase() === prod.category.toLowerCase()) ||
+                            (o.applicableTo === 'product' && o.applicableProduct && prod._id === o.applicableProduct)
+                        );
+                        setMatchedOffer(offer || null);
+                    }
                 } else {
                     setError('Product not found');
                 }
@@ -50,7 +68,16 @@ const Product = () => {
         if (id) fetchProduct();
     }, [id]);
 
-    const handleAddToCart = () => { if (product) addToCart(product); };
+    const handleAddToCart = () => { 
+        if (product) {
+            const productWithOffer = {
+                ...product,
+                offerType: matchedOffer?.type,
+                offerValue: matchedOffer?.discountValue
+            };
+            addToCart(productWithOffer); 
+        }
+    };
     const handleRemoveFromCart = () => { if (product) removeFromCart(product._id); };
 
     const getImages = () => {
@@ -65,7 +92,26 @@ const Product = () => {
     };
 
     const images = getImages();
-    const price = product?.sellingPrice || 0;
+    const originalPrice = product?.sellingPrice || 0;
+
+    // Compute discounted price based on matched offer
+    let discountedPrice = originalPrice;
+    let discountLabel = null;
+    let savingsAmount = 0;
+    if (matchedOffer) {
+        if (matchedOffer.type === 'percentage') {
+            savingsAmount = Math.round(originalPrice * matchedOffer.discountValue / 100);
+            if (matchedOffer.maxDiscountAmount) savingsAmount = Math.min(savingsAmount, matchedOffer.maxDiscountAmount);
+            discountedPrice = originalPrice - savingsAmount;
+            discountLabel = `${matchedOffer.discountValue}% OFF`;
+        } else if (matchedOffer.type === 'flat') {
+            savingsAmount = matchedOffer.discountValue;
+            discountedPrice = Math.max(0, originalPrice - savingsAmount);
+            discountLabel = `FLAT ₹${savingsAmount} OFF`;
+        }
+    }
+
+    const price = discountedPrice;
     const gstAmount = (price * (product?.gstPercent || 0) / 100).toFixed(2);
     const stockQty = product?.stockQty ?? 0;
 
@@ -159,9 +205,27 @@ const Product = () => {
                             </div>
                         )}
 
+                        {/* Offer Badge */}
+                        {matchedOffer && discountLabel && (
+                            <div className="flex items-center gap-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-2xl px-4 py-3">
+                                <div className="text-2xl">🔥</div>
+                                <div>
+                                    <p className="font-black text-base uppercase tracking-tight">{discountLabel}</p>
+                                    <p className="text-xs opacity-80 font-bold">{matchedOffer.name || 'Limited Time Offer'}</p>
+                                </div>
+                                <div className="ml-auto text-right">
+                                    <p className="text-xs opacity-80 font-bold">YOU SAVE</p>
+                                    <p className="font-black text-lg">₹{savingsAmount.toLocaleString()}</p>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Price */}
                         <div className="flex items-baseline gap-3 flex-wrap">
                             <span className="font-extrabold text-4xl text-black">₹{price.toLocaleString()}</span>
+                            {matchedOffer && savingsAmount > 0 && (
+                                <span className="text-gray-400 text-2xl font-bold line-through">₹{originalPrice.toLocaleString()}</span>
+                            )}
                             {product.gstPercent > 0 && (
                                 <span className="text-xs font-bold text-gray-600">+ ₹{gstAmount} GST ({product.gstPercent}%)</span>
                             )}
@@ -235,6 +299,9 @@ const Product = () => {
                             ) : quantity === 0 ? (
                                 <button onClick={handleAddToCart} className="w-full bg-blue-600 text-white font-black uppercase tracking-widest py-4 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                                     <ShoppingCart className="w-5 h-5" /> ADD TO CART — ₹{price.toLocaleString()}
+                                    {matchedOffer && savingsAmount > 0 && (
+                                        <span className="text-xs line-through opacity-60 ml-1">₹{originalPrice.toLocaleString()}</span>
+                                    )}
                                 </button>
                             ) : (
                                 <div className="flex items-center justify-between bg-blue-600 rounded-xl py-3 px-6">

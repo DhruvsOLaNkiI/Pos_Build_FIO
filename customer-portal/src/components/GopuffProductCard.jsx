@@ -87,6 +87,16 @@ const GopuffProductCard = ({ product, className = "" }) => {
               {product.promo}
             </div>
           )}
+          {product.offerType === 'percentage' && (
+            <div className="bg-red-100 text-red-700 text-[9px] font-black px-1.5 py-0.5 rounded w-fit uppercase tracking-tighter italic mt-1">
+              {product.offerValue}% OFF
+            </div>
+          )}
+          {product.offerType === 'flat' && (
+            <div className="bg-red-100 text-red-700 text-[9px] font-black px-1.5 py-0.5 rounded w-fit uppercase tracking-tighter italic mt-1">
+              FLAT ₹{product.offerValue} OFF
+            </div>
+          )}
           {product.famPromo && (
             <div className="text-[#2463EB] text-[9px] font-black w-fit flex items-center gap-1 uppercase tracking-tighter italic">
               <span className="bg-[#2463EB] text-white px-1 rounded-sm text-[8px] not-italic mr-0.5">FAM</span> {product.famPromo}
