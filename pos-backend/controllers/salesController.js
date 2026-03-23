@@ -115,7 +115,7 @@ const createSale = async (req, res, next) => {
 // @access  Private
 const getSales = async (req, res, next) => {
     try {
-        const { startDate, endDate, seller } = req.query;
+        const { startDate, endDate, seller, invoiceNo } = req.query;
         const storeId = req.headers['x-store-id'];
 
         let query = {};
@@ -129,6 +129,10 @@ const getSales = async (req, res, next) => {
 
         if (seller) {
             query.seller = seller;
+        }
+
+        if (invoiceNo) {
+            query.invoiceNo = { $regex: invoiceNo, $options: 'i' };
         }
 
         if (startDate && endDate) {
@@ -176,8 +180,104 @@ const getSale = async (req, res, next) => {
     }
 };
 
+// @desc    Process a return for a sale
+// @route   PUT /api/sales/:id/return
+// @access  Private
+const processReturn = async (req, res, next) => {
+    try {
+        const { returnedItems, reason } = req.body; // Array of { productId, quantity, addToStock }
+        let query = { _id: req.params.id };
+        if (req.user.role !== 'super-admin') {
+            query.companyId = req.user.companyId;
+        }
+
+        const sale = await Sale.findOne(query);
+        if (!sale) {
+            res.status(404);
+            return next(new Error('Sale not found'));
+        }
+
+        if (sale.status !== 'completed' && sale.status !== 'delivered') {
+            res.status(400);
+            return next(new Error('Only completed or delivered sales can be returned'));
+        }
+
+        let totalRefund = 0;
+        const processedItems = [];
+
+        for (const rItem of returnedItems) {
+            const saleItemIndex = sale.items.findIndex(i => i.product.toString() === rItem.productId);
+            if (saleItemIndex === -1) continue;
+
+            const saleItem = sale.items[saleItemIndex];
+            const availableToReturn = saleItem.quantity - (saleItem.returnedQty || 0);
+
+            if (rItem.quantity > availableToReturn) {
+                res.status(400);
+                return next(new Error(`Cannot return more than purchased for ${saleItem.name}`));
+            }
+
+            if (rItem.quantity <= 0) continue;
+
+            const itemRefundAmount = (saleItem.total / saleItem.quantity) * rItem.quantity;
+            totalRefund += itemRefundAmount;
+
+            saleItem.returnedQty = (saleItem.returnedQty || 0) + rItem.quantity;
+
+            if (rItem.addToStock) {
+                const product = await Product.findById(rItem.productId);
+                if (product) {
+                    product.stockQty += rItem.quantity;
+                    await product.save();
+                }
+            }
+
+            processedItems.push({
+                product: rItem.productId,
+                quantity: rItem.quantity,
+                refundAmount: itemRefundAmount,
+                addedToStock: rItem.addToStock
+            });
+        }
+
+        if (processedItems.length === 0) {
+            res.status(400);
+            return next(new Error('No valid items to return'));
+        }
+
+        const allItemsFullyReturned = sale.items.every(i => i.quantity === (i.returnedQty || 0));
+        sale.returnStatus = allItemsFullyReturned ? 'full' : 'partial';
+
+        sale.returns.push({
+            reason: reason || 'Customer returned items',
+            items: processedItems,
+            totalRefund
+        });
+
+        if (sale.customer) {
+            const Customer = require('../models/Customer');
+            const customer = await Customer.findById(sale.customer);
+            if (customer) {
+                customer.totalSpent -= totalRefund;
+                const pointsDeducted = Math.floor(totalRefund / 100);
+                customer.loyaltyPoints = Math.max(0, customer.loyaltyPoints - pointsDeducted);
+                if (sale.returnStatus === 'full') {
+                     customer.totalPurchases = Math.max(0, (customer.totalPurchases || 1) - 1);
+                }
+                await customer.save();
+            }
+        }
+
+        await sale.save();
+        res.status(200).json({ success: true, data: sale, message: 'Return processed successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     createSale,
     getSales,
-    getSale
+    getSale,
+    processReturn
 };

@@ -28,7 +28,8 @@ import {
     Store,
     Sparkles,
     Globe,
-    Activity
+    Activity,
+    RefreshCcw
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/useToast';
@@ -44,6 +45,7 @@ const navItems = [
     // Core Business
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['owner', 'cashier', 'staff'], category: 'Core', permission: 'dashboard' },
     { icon: ShoppingCart, label: 'Billing', path: '/billing', roles: ['owner', 'cashier'], category: 'Core', permission: 'billing' },
+    { icon: RefreshCcw, label: 'Returns & Exchange', path: '/returns', roles: ['owner', 'cashier'], category: 'Core', permission: 'billing' },
     { icon: Users, label: 'Customers', path: '/customers', roles: ['owner', 'cashier', 'staff'], category: 'Core', permission: 'customers' },
     { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['owner'], category: 'Core', permission: 'reports' },
     { icon: Wallet, label: 'Expenses', path: '/expenses', roles: ['owner'], category: 'Core', permission: 'expenses' },

@@ -3,7 +3,8 @@ const router = express.Router();
 const {
     createSale,
     getSales,
-    getSale
+    getSale,
+    processReturn
 } = require('../controllers/salesController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -15,5 +16,8 @@ router.route('/')
 
 router.route('/:id')
     .get(getSale);
+
+router.route('/:id/return')
+    .put(authorize('owner', 'cashier'), processReturn);
 
 module.exports = router;

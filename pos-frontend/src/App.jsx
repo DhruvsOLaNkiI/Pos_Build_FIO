@@ -29,6 +29,7 @@ import SuperAdminCompanies from '@/pages/SuperAdminCompanies';
 import SuperAdminApiMonitoring from '@/pages/SuperAdminApiMonitoring';
 import UserActivityAnalytics from '@/pages/UserActivityAnalytics';
 import OnlineOrders from '@/pages/OnlineOrders';
+import ReturnExchange from '@/pages/ReturnExchange';
 
 function App() {
     const { isAuthenticated, loading, user } = useAuth();
@@ -66,6 +67,7 @@ function App() {
                 <Route path="/" element={<Navigate to="/dashboard" />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/billing" element={<Billing />} />
+                <Route path="/returns" element={<ReturnExchange />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/products/new" element={<CreateProduct />} />
                 <Route path="/units" element={<Units />} />

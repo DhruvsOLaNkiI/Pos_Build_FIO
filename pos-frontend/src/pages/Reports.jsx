@@ -14,6 +14,13 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import {
     BarChart,
     Bar,
     XAxis,
@@ -37,6 +44,7 @@ import {
     Building2,
     ChevronDown,
     ChevronUp,
+    RefreshCcw,
 } from 'lucide-react';
 
 const COLORS = ['#E8DCCA', '#9CA582', '#0a4d22ff', '#4A6B5A', '#2D4A3E', '#1F3329', '#7CB9A8', '#D4A574', '#A8C686', '#6B8F71'];
@@ -420,6 +428,79 @@ const Reports = () => {
         if (!transactionsData) return null;
 
         const [expandedInvoice, setExpandedInvoice] = useState(null);
+        const [returnModalOpen, setReturnModalOpen] = useState(false);
+        const [returnProcessing, setReturnProcessing] = useState(false);
+        const [returnForm, setReturnForm] = useState({
+            sale: null,
+            items: [],
+            reason: '',
+        });
+
+        const openReturnModal = (sale) => {
+            const items = sale.items.map(item => {
+                const maxReturn = item.quantity - (item.returnedQty || 0);
+                return {
+                    ...item,
+                    maxReturn,
+                    returnQty: 0,
+                    addToStock: true
+                };
+            }).filter(item => item.maxReturn > 0);
+
+            if (items.length === 0) {
+                alert("All items in this invoice have already been returned.");
+                return;
+            }
+
+            setReturnForm({
+                sale,
+                items,
+                reason: ''
+            });
+            setReturnModalOpen(true);
+        };
+
+        const handleItemReturnChange = (index, field, value) => {
+            const newItems = [...returnForm.items];
+            if (field === 'returnQty') {
+                const val = parseInt(value, 10);
+                newItems[index][field] = isNaN(val) ? 0 : Math.min(Math.max(0, val), newItems[index].maxReturn);
+            } else {
+                newItems[index][field] = value;
+            }
+            setReturnForm({ ...returnForm, items: newItems });
+        };
+
+        const handleProcessReturn = async () => {
+            const returnedItems = returnForm.items
+                .filter(i => i.returnQty > 0)
+                .map(i => ({ 
+                    productId: i.product._id || i.product, 
+                    quantity: i.returnQty, 
+                    addToStock: i.addToStock 
+                }));
+
+            if (returnedItems.length === 0) {
+                alert("Please select at least one item to return.");
+                return;
+            }
+
+            setReturnProcessing(true);
+            try {
+                await API.put(`/sales/${returnForm.sale._id}/return`, {
+                    returnedItems,
+                    reason: returnForm.reason
+                });
+                alert("Return processed successfully");
+                setReturnModalOpen(false);
+                fetchReport();
+            } catch (err) {
+                console.error(err);
+                alert("Failed to process return");
+            } finally {
+                setReturnProcessing(false);
+            }
+        };
 
         return (
             <div className="space-y-6">
@@ -502,6 +583,7 @@ const Reports = () => {
                                                                             <TableHead className="h-8 py-1 text-xs">Product</TableHead>
                                                                             <TableHead className="h-8 py-1 text-xs text-right">Price</TableHead>
                                                                             <TableHead className="h-8 py-1 text-xs text-right">Qty</TableHead>
+                                                                            <TableHead className="h-8 py-1 text-xs text-right">Returned</TableHead>
                                                                             <TableHead className="h-8 py-1 text-xs text-right">Total</TableHead>
                                                                         </TableRow>
                                                                     </TableHeader>
@@ -511,6 +593,7 @@ const Reports = () => {
                                                                                 <TableCell className="py-2 text-sm">{item?.name || 'Unknown item'}</TableCell>
                                                                                 <TableCell className="py-2 text-sm text-right">{formatCurrency(item?.price || 0)}</TableCell>
                                                                                 <TableCell className="py-2 text-sm text-right">{item?.quantity || 0}</TableCell>
+                                                                                <TableCell className="py-2 text-sm text-right text-destructive font-medium">{item?.returnedQty || 0}</TableCell>
                                                                                 <TableCell className="py-2 text-sm text-right font-medium">{formatCurrency(item?.total || 0)}</TableCell>
                                                                             </TableRow>
                                                                         ))}
@@ -538,6 +621,26 @@ const Reports = () => {
                                                                             <span>{formatCurrency(sale.grandTotal || 0)}</span>
                                                                         </div>
                                                                     </div>
+
+                                                                    <div className="mt-4 flex justify-between items-center border-t border-border pt-3">
+                                                                        <div className="flex gap-2">
+                                                                            {sale.returnStatus === 'full' ? (
+                                                                                <span className="px-3 py-1 bg-destructive/10 text-destructive rounded font-semibold text-sm">Fully Returned</span>
+                                                                            ) : sale.returnStatus === 'partial' ? (
+                                                                                <span className="px-3 py-1 bg-yellow-500/10 text-yellow-500 rounded font-semibold text-sm">Partially Returned</span>
+                                                                            ) : null}
+                                                                        </div>
+                                                                        <Button 
+                                                                            variant="outline" 
+                                                                            className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                                                                            size="sm"
+                                                                            disabled={sale.returnStatus === 'full'}
+                                                                            onClick={() => openReturnModal(sale)}
+                                                                        >
+                                                                            <RefreshCcw className="w-4 h-4 mr-2" />
+                                                                            Return Items
+                                                                        </Button>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </TableCell>
@@ -551,6 +654,84 @@ const Reports = () => {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Return Modal */}
+                <Dialog open={returnModalOpen} onOpenChange={setReturnModalOpen}>
+                    <DialogContent className="sm:max-w-[700px]">
+                        <DialogHeader>
+                            <DialogTitle>Process Return - {returnForm.sale?.invoiceNo}</DialogTitle>
+                        </DialogHeader>
+
+                        <div className="space-y-4 py-4">
+                            <div className="rounded-md border border-border overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted text-xs">
+                                            <TableHead>Product</TableHead>
+                                            <TableHead className="text-right">Price</TableHead>
+                                            <TableHead className="text-center">Remaining</TableHead>
+                                            <TableHead className="text-center w-24">Return Qty</TableHead>
+                                            <TableHead className="text-center">Add to Stock</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {returnForm.items.map((item, idx) => (
+                                            <TableRow key={idx}>
+                                                <TableCell className="font-medium text-sm">{item.name}</TableCell>
+                                                <TableCell className="text-right text-sm">{formatCurrency(item.price)}</TableCell>
+                                                <TableCell className="text-center text-sm">{item.maxReturn}</TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        max={item.maxReturn}
+                                                        value={item.returnQty === 0 ? '' : item.returnQty}
+                                                        onChange={(e) => handleItemReturnChange(idx, 'returnQty', e.target.value)}
+                                                        className="h-8 text-center"
+                                                        placeholder="0"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-4 h-4 cursor-pointer"
+                                                        checked={item.addToStock}
+                                                        onChange={(e) => handleItemReturnChange(idx, 'addToStock', e.target.checked)}
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Reason for Return</Label>
+                                <Input 
+                                    placeholder="e.g., Customer changed mind, defective..." 
+                                    value={returnForm.reason}
+                                    onChange={(e) => setReturnForm({ ...returnForm, reason: e.target.value })}
+                                />
+                            </div>
+                            
+                            {/* Summary showing total refund based on selected return qty */}
+                            <div className="bg-muted/50 p-4 rounded-lg flex justify-between items-center">
+                                <span className="font-medium">Estimated Refund Amount:</span>
+                                <span className="text-xl font-bold text-destructive">
+                                    {formatCurrency(returnForm.items.reduce((acc, item) => acc + (item.returnQty * (item.total / item.quantity)), 0))}
+                                </span>
+                            </div>
+                        </div>
+
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setReturnModalOpen(false)}>Cancel</Button>
+                            <Button variant="destructive" onClick={handleProcessReturn} disabled={returnProcessing}>
+                                {returnProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCcw className="w-4 h-4 mr-2" />}
+                                Process Return & Refund
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         );
     };

@@ -19,6 +19,10 @@ const saleSchema = new mongoose.Schema(
                     type: Number,
                     required: true,
                 },
+                returnedQty: {
+                    type: Number,
+                    default: 0,
+                },
                 price: {
                     type: Number,
                     required: true,
@@ -99,6 +103,26 @@ const saleSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        returnStatus: {
+            type: String,
+            enum: ['none', 'partial', 'full'],
+            default: 'none'
+        },
+        returns: [
+            {
+                returnDate: { type: Date, default: Date.now },
+                reason: String,
+                items: [
+                    {
+                        product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+                        quantity: Number,
+                        refundAmount: Number,
+                        addedToStock: Boolean
+                    }
+                ],
+                totalRefund: Number,
+            }
+        ]
     },
     {
         timestamps: true,
