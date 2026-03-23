@@ -12,7 +12,7 @@ const getDashboardStats = async (req, res, next) => {
     try {
         const storeId = req.headers['x-store-id'];
         const mongoose = require('mongoose');
-        
+
         let baseMatch = {};
         if (req.user.role !== 'super-admin') {
             baseMatch.companyId = req.user.companyId;
