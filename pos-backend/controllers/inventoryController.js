@@ -27,7 +27,23 @@ const getInventoryItems = async (req, res, next) => {
 
         // Fetch warehouse allocations (optionally filtered by warehouse)
         let allocationQuery = { companyId: req.user.companyId };
-        if (req.query.warehouseId && req.query.warehouseId !== 'all') {
+
+        // Enforce access control for non-owners
+        if (req.user.role !== 'owner' && req.user.role !== 'super-admin') {
+            const user = await require('../models/User').findById(req.user.id);
+            const accessibleWH = (user?.accessibleWarehouses || []).map(id => id.toString());
+
+            if (req.query.warehouseId && req.query.warehouseId !== 'all') {
+                if (!accessibleWH.includes(req.query.warehouseId)) {
+                    res.status(403);
+                    return next(new Error('Access to this warehouse is denied'));
+                }
+                allocationQuery.warehouseId = req.query.warehouseId;
+            } else {
+                // Restrict 'all' to only accessible warehouses
+                allocationQuery.warehouseId = { $in: user?.accessibleWarehouses || [] };
+            }
+        } else if (req.query.warehouseId && req.query.warehouseId !== 'all') {
             allocationQuery.warehouseId = req.query.warehouseId;
         }
         const allocations = await WarehouseInventory.find(allocationQuery);
@@ -41,7 +57,8 @@ const getInventoryItems = async (req, res, next) => {
             stockByProduct[pid] += alloc.stockQty;
         });
 
-        const isFilteredByWarehouse = req.query.warehouseId && req.query.warehouseId !== 'all';
+        const isRestrictedUser = req.user.role !== 'owner' && req.user.role !== 'super-admin';
+        const isFilteredByWarehouse = (req.query.warehouseId && req.query.warehouseId !== 'all') || isRestrictedUser;
         const includedProductIds = new Set(); // track which products are already shown via InventoryItem
 
         // Process InventoryItem records first

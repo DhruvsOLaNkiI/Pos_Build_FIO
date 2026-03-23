@@ -96,15 +96,20 @@ const Sidebar = () => {
         if (!item) return false;
         // Owner and super-admin have full access
         if (user?.role === 'owner' || user?.role === 'super-admin') return true;
-        // Check role first
-        if (!item.roles.includes(user?.role)) return false;
-        // For staff/cashier, check permissions array
+
+        // For staff/cashier, explicit permissions array is the source of truth
         if (user?.role === 'cashier' || user?.role === 'staff') {
-            // If no permission key, allow by default (role-only pages)
-            if (!item.permission) return true;
-            return user?.permissions?.includes(item.permission);
+            if (item.permission) {
+                if (Array.isArray(user?.permissions)) {
+                    return user.permissions.includes(item.permission);
+                }
+                // Fallback for legacy users without initialized permissions
+                return item.roles.includes(user?.role);
+            }
+            return item.roles.includes(user?.role);
         }
-        return true;
+
+        return item.roles.includes(user?.role);
     };
 
     const filteredNavItems = isSuperAdmin
@@ -271,14 +276,24 @@ const Sidebar = () => {
                 </Button>
             </div>
 
-            {/* Store Switcher — shown for owners (all stores) or staff (accessible stores) */}
+            {/* Store Switcher — shown for owners (all stores) or staff (multiple accessible stores) */}
             {!collapsed && (
                 (() => {
-                    const storeList = user?.role === 'owner'
+                    const rawStoreList = user?.role === 'owner'
                         ? allStores
                         : (user?.accessibleStores || []);
 
-                    if (storeList.length === 0) return null;
+                    // If staff/cashier, only show switcher if they have more than 1 store
+                    if (user?.role !== 'owner' && rawStoreList.length <= 1) return null;
+                    if (rawStoreList.length === 0) return null;
+
+                    // Ensure we have full store objects even if backend sent IDs
+                    const storeList = rawStoreList.map(s => {
+                        if (typeof s === 'string') {
+                            return allStores.find(store => store._id === s) || { _id: s, name: 'Store' };
+                        }
+                        return s;
+                    });
 
                     return (
                         <div className="px-4 py-3 border-b border-border bg-muted/20">
@@ -298,7 +313,7 @@ const Sidebar = () => {
                         </div>
                     );
                 })()
-            )}
+            )})}
 
             {/* Nav Items */}
             <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-6">

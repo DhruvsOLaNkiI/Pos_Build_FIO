@@ -57,19 +57,49 @@ const Inventory = () => {
     const fetchWarehouses = async () => {
         try {
             const res = await API.get('/warehouses');
-            setWarehouses(res.data.data);
-            // Look for store context
+            const fetchedWarehouses = res.data.data;
+            
+            // Filter based on user profile for staff/cashiers
+            const filtered = user?.role === 'owner' 
+                ? fetchedWarehouses 
+                : fetchedWarehouses.filter(wh => user?.accessibleWarehouses?.includes(wh._id));
+            
+            setWarehouses(filtered);
+
+            // Determine initial warehouse filter
             const storeId = localStorage.getItem('activeStore');
-            if (storeId) {
-                try {
-                    const storeRes = await API.get(`/stores/${storeId}`);
-                    if (storeRes.data?.data?.defaultWarehouseId) {
-                        setWarehouseFilter(storeRes.data.data.defaultWarehouseId);
+            let initialWH = 'all';
+
+            if (user?.role !== 'owner') {
+                if (filtered.length === 1) {
+                    initialWH = filtered[0]._id;
+                } else if (filtered.length > 0) {
+                    // Check if current store context matches an accessible warehouse
+                    if (storeId) {
+                        try {
+                            const storeRes = await API.get(`/stores/${storeId}`);
+                            const defaultWH = storeRes.data?.data?.defaultWarehouseId;
+                            if (defaultWH && filtered.some(wh => wh._id === defaultWH)) {
+                                initialWH = defaultWH;
+                            } else {
+                                initialWH = filtered[0]._id;
+                            }
+                        } catch (e) {
+                            initialWH = filtered[0]._id;
+                        }
+                    } else {
+                        initialWH = filtered[0]._id;
                     }
-                } catch (e) {
-                    console.error("Failed to load store context for warehouse default", e);
+                }
+            } else if (storeId) {
+                // For owner, try to match store context
+                const storeRes = await API.get(`/stores/${storeId}`).catch(() => null);
+                if (storeRes?.data?.data?.defaultWarehouseId) {
+                    initialWH = storeRes.data.data.defaultWarehouseId;
                 }
             }
+            
+            setWarehouseFilter(initialWH);
         } catch (error) {
             console.error('Failed to fetch warehouses', error);
         }
@@ -240,8 +270,9 @@ const Inventory = () => {
                         className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-w-[150px] truncate"
                         value={warehouseFilter}
                         onChange={(e) => setWarehouseFilter(e.target.value)}
+                        disabled={user?.role !== 'owner' && warehouses.length <= 1}
                     >
-                            <option value="all">All Warehouses</option>
+                        {user?.role === 'owner' && <option value="all">All Warehouses</option>}
                         {warehouses.map(wh => (
                             <option key={wh._id} value={wh._id}>{wh.name}</option>
                         ))}
