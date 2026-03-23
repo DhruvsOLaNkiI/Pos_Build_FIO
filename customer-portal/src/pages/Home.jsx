@@ -16,11 +16,24 @@ import AccountView from '../components/AccountView';
 const Home = () => {
     const { trackProductView } = useCustomerActivityTracking();
     const [products, setProducts] = useState([]);
+    const [offers, setOffers] = useState([]);
     const [nearbyStoresData, setNearbyStoresData] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { view, setView } = useOutletContext();
+    const { view, setView, categories, setCategories, filters, setFilters } = useOutletContext();
     const [currentPincode, setCurrentPincode] = useState(() => localStorage.getItem('customer_pincode'));
-    const [filters, setFilters] = useState({ category: '', brand: '', inStock: false, sort: '' });
+    const [specialFilter, setSpecialFilter] = useState(null); // 'bulk' | 'offers' | 'deals'
+
+
+    const fetchOffers = useCallback(async () => {
+        try {
+            const { data } = await API.get('/offers');
+            if (data.success) {
+                setOffers(data.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch offers', error);
+        }
+    }, []);
 
     const fetchNearbyStores = useCallback(async (pincode) => {
         if (!pincode) return;
@@ -35,17 +48,26 @@ const Home = () => {
     }, []);
 
     useEffect(() => {
-        const fetchProducts = async () => {
+        const fetchProductsAndOffers = async () => {
             try {
-                const { data } = await API.get('/products');
-                setProducts(data.data);
+                const [prodRes, offRes] = await Promise.all([
+                    API.get('/products'),
+                    API.get('/offers')
+                ]);
+                if (prodRes.data?.success) {
+                    const allProds = prodRes.data.data;
+                    setProducts(allProds);
+                    const cats = [...new Set(allProds.map(p => p.category).filter(Boolean))].sort();
+                    setCategories(cats);
+                }
+                if (offRes.data?.success) setOffers(offRes.data.data);
             } catch (error) {
-                console.error('Failed to fetch products', error);
+                console.error('Failed to fetch data', error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchProducts();
+        fetchProductsAndOffers();
         
         if (currentPincode) {
             fetchNearbyStores(currentPincode);
@@ -57,8 +79,17 @@ const Home = () => {
         };
 
         window.addEventListener('locationChanged', handleLocationChange);
-        return () => window.removeEventListener('locationChanged', handleLocationChange);
-    }, [currentPincode, fetchNearbyStores]);
+
+        const handleSpecialFilter = (e) => {
+            setSpecialFilter(e.detail);
+            setView('all-products');
+        };
+        window.addEventListener('filterDeals', handleSpecialFilter);
+        return () => {
+            window.removeEventListener('locationChanged', handleLocationChange);
+            window.removeEventListener('filterDeals', handleSpecialFilter);
+        };
+    }, [currentPincode, fetchNearbyStores, setCategories, setView]);
 
     // Merge all products from all nearby stores into one flat list
     const storeProducts = useMemo(() => {
@@ -89,6 +120,36 @@ const Home = () => {
     // Apply filters
     const filteredProducts = useMemo(() => {
         let result = [...activeProducts];
+
+        // Apply Special Filters (Bulk, Offers, Deals)
+        if (specialFilter === 'offers') {
+            const offerCategories = offers
+                .filter(o => o.applicableTo === 'category')
+                .map(o => o.applicableCategory?.toLowerCase());
+            const hasAllOffer = offers.some(o => o.applicableTo === 'all');
+            
+            result = result.filter(p => 
+                hasAllOffer || (p.category && offerCategories.includes(p.category.toLowerCase()))
+            );
+        } else if (specialFilter === 'bulk') {
+            // "Bulk" logic: high stock or variant name containing KG/Bulk
+            result = result.filter(p => 
+                (p.variant && (p.variant.toLowerCase().includes('kg') || p.variant.toLowerCase().includes('bulk'))) ||
+                p.stockQty > 50
+            );
+        } else if (specialFilter === 'deals') {
+            // "Deals" logic: price drops (could use oldPrice check if it existed)
+            // For now, let's just use the same as home deals (matched offers)
+            const offerCategories = offers
+                .filter(o => o.applicableTo === 'category')
+                .map(o => o.applicableCategory?.toLowerCase());
+            result = result.filter(p => 
+                offers.some(o => o.applicableTo === 'all') || 
+                (p.category && offerCategories.includes(p.category.toLowerCase()))
+            );
+        }
+
+        // Apply Search Filters
         if (filters.category) result = result.filter(p => p.category === filters.category);
         if (filters.brand) result = result.filter(p => p.brand === filters.brand);
         if (filters.inStock) result = result.filter(p => (p.stockQty || 0) > 0);
@@ -134,6 +195,22 @@ const Home = () => {
         });
         return groups;
     }, [activeProducts]);
+
+    // Compute DEALS products based on offers
+    const dealProducts = useMemo(() => {
+        if (!offers || offers.length === 0) return [];
+        return activeProducts.filter(p => {
+            return offers.some(o => 
+                o.applicableTo === 'all' || 
+                (o.applicableTo === 'category' && o.applicableCategory && p.category && o.applicableCategory.toLowerCase() === p.category.toLowerCase()) ||
+                (o.applicableTo === 'product' && o.applicableProduct && p._id === o.applicableProduct) // If they ever add product specific
+            );
+        }).slice(0, 15).map(p => ({
+            ...p,
+            badge: "OFFER APPLIED",
+            famPromo: "Deal Available" // Just a visual cue
+        }));
+    }, [activeProducts, offers]);
 
     // Static categorizations for fallback (when no pincode)
     const trendingProducts = activeProducts.slice(0, 10).map(p => ({
@@ -253,6 +330,16 @@ const Home = () => {
             {/* When pincode is set: Show products grouped by CATEGORY as carousels */}
             {storeProducts.length > 0 ? (
                 <>
+                    {/* DEALS Section */}
+                    {dealProducts.length > 0 && (
+                        <GopuffProductCarousel
+                            title="🔥 DEALS FOR YOU."
+                            products={dealProducts}
+                            totalItems={dealProducts.length}
+                            onMoreClick={() => setView('all-products')}
+                        />
+                    )}
+
                     {/* Trending / Featured - first 10 products */}
                     <GopuffProductCarousel
                         title={`TRENDING NEAR ${currentPincode}.`}
@@ -285,6 +372,16 @@ const Home = () => {
                 </>
             ) : (
                 <>
+                    {/* DEALS Section */}
+                    {dealProducts.length > 0 && (
+                        <GopuffProductCarousel
+                            title="🔥 DEALS FOR YOU."
+                            products={dealProducts}
+                            totalItems={dealProducts.length}
+                            onMoreClick={() => setView('all-products')}
+                        />
+                    )}
+
                     {/* Default view - no pincode */}
                     <GopuffProductCarousel
                         title="TRENDING IN ATLANTA."

@@ -52,10 +52,25 @@ const Loyalty = () => {
     const [offerForm, setOfferForm] = useState(defaultOfferForm);
     const [copiedCode, setCopiedCode] = useState(null);
 
+    // ── Categories ──────────────────────────────────────────────────────
+    const [categories, setCategories] = useState([]);
+
     useEffect(() => {
         fetchSettings();
         fetchOffers();
+        fetchCategories();
     }, []);
+
+    const fetchCategories = async () => {
+        try {
+            const res = await API.get('/products');
+            const products = res.data.data || [];
+            const uniqueCategories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
+            setCategories(uniqueCategories);
+        } catch (e) {
+            console.error('Failed to fetch categories', e);
+        }
+    };
 
     const fetchSettings = async () => {
         try {
@@ -135,6 +150,8 @@ const Loyalty = () => {
                 buyQuantity: offerForm.buyQuantity ? Number(offerForm.buyQuantity) : null,
                 getQuantity: offerForm.getQuantity ? Number(offerForm.getQuantity) : null,
                 couponCode: offerForm.isAutoApply ? null : (offerForm.couponCode || null),
+                applicableTo: offerForm.applicableTo || 'all',
+                applicableCategory: offerForm.applicableTo === 'category' ? (offerForm.applicableCategory || null) : null,
             };
 
             if (editingOffer) {
@@ -591,6 +608,43 @@ const Loyalty = () => {
                                 <Label>Valid Until <span className="text-xs text-muted-foreground">optional</span></Label>
                                 <Input type="date" value={offerForm.validTo} onChange={e => setOfferForm(f => ({ ...f, validTo: e.target.value }))} className="text-foreground bg-background" />
                             </div>
+                        </div>
+
+                        {/* Applicability */}
+                        <div className="space-y-3">
+                            <Label>Applicability</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setOfferForm(f => ({ ...f, applicableTo: 'all', applicableCategory: '' }))}
+                                    className={`p-3 border rounded-xl text-sm font-medium text-left transition-all ${offerForm.applicableTo === 'all' ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}
+                                >
+                                    🛍️ All Products
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setOfferForm(f => ({ ...f, applicableTo: 'category' }))}
+                                    className={`p-3 border rounded-xl text-sm font-medium text-left transition-all ${offerForm.applicableTo === 'category' ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}
+                                >
+                                    📁 Specific Category
+                                </button>
+                            </div>
+                            {offerForm.applicableTo === 'category' && (
+                                <div className="space-y-2">
+                                    <Label>Category Name</Label>
+                                    <select
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                        value={offerForm.applicableCategory}
+                                        onChange={e => setOfferForm(f => ({ ...f, applicableCategory: e.target.value }))}
+                                    >
+                                        <option value="" disabled>Select a Category</option>
+                                        {categories.length === 0 && <option disabled>No categories found in database</option>}
+                                        {categories.map(cat => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </div>
                     </div>
 

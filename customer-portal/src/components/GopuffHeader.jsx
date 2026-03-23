@@ -5,13 +5,30 @@ import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import LocationPickerModal from './LocationPickerModal';
 
-const GopuffHeader = ({ onViewHome, onViewAccount }) => {
+const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }) => {
     const { customer } = useAuth();
     const { totalItems } = useCart();
     
     const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+    const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+    const [isDealsOpen, setIsDealsOpen] = useState(false);
     const [currentPincode, setCurrentPincode] = useState(() => localStorage.getItem('customer_pincode') || 'SET LOCATION');
     const [currentStoreName, setCurrentStoreName] = useState(() => localStorage.getItem('customer_store_name') || '');
+
+    const handleCategoryClick = (cat) => {
+        setFilters({ category: cat, brand: '', inStock: false, sort: '', priceRange: '' });
+        setIsCategoryOpen(false);
+    };
+
+    const handleDealClick = (type) => {
+        // Logic to show specific deal types
+        // For 'Buy In Bulk', we could filter for products with high stock or specific bulk names
+        // For 'Offers', we show dealProducts
+        // For 'Deals', we show priceDrops
+        setIsDealsOpen(false);
+        // Dispatch event or call a function to filter on Home.jsx
+        window.dispatchEvent(new CustomEvent('filterDeals', { detail: type }));
+    };
 
     const handleLocationSelect = (pincode) => {
         setCurrentPincode(pincode);
@@ -58,13 +75,66 @@ const GopuffHeader = ({ onViewHome, onViewAccount }) => {
             </div>
 
             <div className="max-w-[1440px] mx-auto px-4 py-2 flex items-center justify-between text-[11px] font-black tracking-widest uppercase border-t border-gray-100 italic">
-                <div className="flex items-center gap-6">
-                    <button className="flex items-center gap-1 hover:text-blue-600 transition-colors">
-                        Shop Categories <ChevronDown className="h-3 w-3" />
-                    </button>
-                    <button className="flex items-center gap-1 hover:text-blue-600 transition-colors">
-                        Deals <ChevronDown className="h-3 w-3" />
-                    </button>
+                <div className="flex items-center gap-6 relative">
+                    {/* Shop Categories Dropdown */}
+                    <div className="relative group">
+                        <button 
+                            onMouseEnter={() => setIsCategoryOpen(true)}
+                            onMouseLeave={() => setIsCategoryOpen(false)}
+                            className="flex items-center gap-1 hover:text-blue-600 transition-colors py-2"
+                        >
+                            Shop Categories <ChevronDown className="h-3 w-3" />
+                        </button>
+                        {isCategoryOpen && (
+                            <div 
+                                onMouseEnter={() => setIsCategoryOpen(true)}
+                                onMouseLeave={() => setIsCategoryOpen(false)}
+                                className="absolute top-full left-0 bg-white shadow-2xl border border-gray-100 py-4 min-w-[280px] grid grid-cols-2 gap-x-2 px-2 z-[60] normal-case rounded-xl italic"
+                            >
+                                {categories.map(cat => (
+                                    <button 
+                                        key={cat} 
+                                        onClick={() => handleCategoryClick(cat)}
+                                        className="text-left px-4 py-2.5 hover:bg-gray-50 rounded-lg text-gray-800 font-bold tracking-tight text-xs uppercase"
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Deals Dropdown */}
+                    <div className="relative group">
+                        <button 
+                            onMouseEnter={() => setIsDealsOpen(true)}
+                            onMouseLeave={() => setIsDealsOpen(false)}
+                            className="flex items-center gap-1 hover:text-blue-600 transition-colors py-2"
+                        >
+                            Deals <ChevronDown className="h-3 w-3" />
+                        </button>
+                        {isDealsOpen && (
+                            <div 
+                                onMouseEnter={() => setIsDealsOpen(true)}
+                                onMouseLeave={() => setIsDealsOpen(false)}
+                                className="absolute top-full left-0 bg-white shadow-2xl border border-gray-100 py-4 min-w-[220px] z-[60] normal-case rounded-xl italic px-2"
+                            >
+                                {[
+                                    { name: 'Buy In Bulk Pay Less', type: 'bulk' },
+                                    { name: 'Offers', type: 'offers' },
+                                    { name: 'Deals', type: 'deals' }
+                                ].map(deal => (
+                                    <button 
+                                        key={deal.type} 
+                                        onClick={() => handleDealClick(deal.type)}
+                                        className="w-full text-left px-4 py-3 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-gray-800 font-extrabold tracking-tighter text-xs uppercase transition-all"
+                                    >
+                                        {deal.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-gray-900 hidden sm:inline">ARRIVES IN <span className="text-blue-600">FAST</span></span>

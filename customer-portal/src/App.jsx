@@ -24,16 +24,20 @@ const ProtectedRoute = ({ children }) => {
 
 const AppLayout = () => {
   const [view, setView] = useState('home'); // 'home' | 'all-products' | 'account'
+  const [categories, setCategories] = useState([]);
+  const [filters, setFilters] = useState({ category: '', brand: '', inStock: false, sort: '', priceRange: '' });
 
   return (
     <div className="relative min-h-screen flex flex-col bg-white">
       <GopuffBanner onClick={() => setView('all-products')} />
       <GopuffHeader
-        onViewHome={() => setView('home')}
+        onViewHome={() => { setView('home'); setFilters({ category: '', brand: '', inStock: false, sort: '', priceRange: '' }); }}
         onViewAccount={() => setView('account')}
+        categories={categories}
+        setFilters={(newFilters) => { setFilters(newFilters); setView('all-products'); }}
       />
       <main className="flex-1 w-full overflow-x-hidden">
-        <Outlet context={{ view, setView }} />
+        <Outlet context={{ view, setView, categories, setCategories, filters, setFilters }} />
       </main>
     </div>
   );
