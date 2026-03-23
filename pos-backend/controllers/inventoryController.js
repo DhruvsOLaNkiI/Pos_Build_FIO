@@ -28,7 +28,7 @@ const getInventoryItems = async (req, res, next) => {
         // Fetch warehouse allocations (optionally filtered by warehouse)
         let allocationQuery = { companyId: req.user.companyId };
 
-        // Enforce access control for non-owners
+        // Enforce access control for non-owners or To change it To another 
         if (req.user.role !== 'owner' && req.user.role !== 'super-admin') {
             const user = await require('../models/User').findById(req.user.id);
             const accessibleWH = (user?.accessibleWarehouses || []).map(id => id.toString());
