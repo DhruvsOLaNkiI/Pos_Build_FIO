@@ -93,10 +93,12 @@ const Home = () => {
 
     // Merge all products from all nearby stores into one flat list
     const storeProducts = useMemo(() => {
-        if (nearbyStoresData.length === 0) return [];
+        if (!nearbyStoresData || nearbyStoresData.length === 0) return [];
         const all = [];
         nearbyStoresData.forEach(({ products: prods }) => {
-            prods.forEach(p => all.push(p));
+            if (Array.isArray(prods)) {
+                prods.forEach(p => all.push(p));
+            }
         });
         return all;
     }, [nearbyStoresData]);

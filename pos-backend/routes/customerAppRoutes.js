@@ -428,41 +428,55 @@ router.get('/offers', async (req, res, next) => {
         next(error);
     }
 });
-// @desc    Get Nearby Stores based on pincode with their products
-// @route   GET /api/customer-app/stores/nearby?pincode=123456
+// @desc    Get Nearby Stores based on pincode or GPS with their products
+// @route   GET /api/customer-app/stores/nearby?pincode=123456 OR ?lat=...&lng=...
 // @access  Public
 router.get('/stores/nearby', async (req, res, next) => {
     try {
-        const { pincode, radius = 20 } = req.query; // Radius in KM
+        const { pincode, lat, lng, radius = 20 } = req.query; // Radius in KM
         const { geocodePincode } = require('../utils/geocoder');
         const Product = require('../models/Product');
 
-        if (!pincode) {
-            res.status(400);
-            return next(new Error('Please provide a pincode'));
-        }
-
         let stores = [];
 
-        // Convert the user's pincode to coordinates
-        const coords = await geocodePincode(pincode);
-        if (!coords) {
-            // Fallback: Exact plain-text match if geocoding fails
-            stores = await Store.find({ pincode, isActive: true });
-        } else {
-            // Use MongoDB $near query
+        if (lat && lng) {
+            // Use GPS coordinates directly
             stores = await Store.find({
                 isActive: true,
                 location: {
                     $near: {
                         $geometry: {
                             type: 'Point',
-                            coordinates: [coords.lng, coords.lat]
+                            coordinates: [parseFloat(lng), parseFloat(lat)]
                         },
                         $maxDistance: parseInt(radius) * 1000 // Convert km to meters
                     }
                 }
             });
+        } else if (pincode) {
+            // Use pincode to get coordinates
+            const coords = await geocodePincode(pincode);
+            if (!coords) {
+                // Fallback: Exact plain-text match if geocoding fails
+                stores = await Store.find({ pincode, isActive: true });
+            } else {
+                // Use coordinates from geocoder
+                stores = await Store.find({
+                    isActive: true,
+                    location: {
+                        $near: {
+                            $geometry: {
+                                type: 'Point',
+                                coordinates: [coords.lng, coords.lat]
+                            },
+                            $maxDistance: parseInt(radius) * 1000 // Convert km to meters
+                        }
+                    }
+                });
+            }
+        } else {
+            res.status(400);
+            return next(new Error('Please provide either active GPS coordinates or a pincode'));
         }
 
         // For each store, fetch its products and attach store info to each product

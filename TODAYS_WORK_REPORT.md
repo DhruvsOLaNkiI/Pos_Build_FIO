@@ -61,3 +61,8 @@ Today, we successfully moved the entire **FIO POS & Customer Portal** project fr
 
 ---
 **Merge Status**: Successfully merged all changes from branch `AVITA` to `main` and pushed to GitHub. All components are synchronized.
+# 23_03_20206 - I add Return and Exchachange For Offline Store Coustomen and Add SOmthing Like -Smart Inventory Sync: When an item is returned, you can choose whether to add it back to your stock (if it's resellable) or not (if it's damaged). -- Customer Loyalty Sync: If a customer returns an item, the system automatically deducts the loyalty points they earned for that specific portion of the sale.
+#. Granular Access Control (Cashier & Staff)
+
+# In Coustomer Portal i Added offer page Woring Smoothly AND Discount item CAn Easy Open
+ 

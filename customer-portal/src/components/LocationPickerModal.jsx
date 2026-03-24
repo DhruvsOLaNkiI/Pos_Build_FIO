@@ -32,6 +32,7 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
             if (data.success && data.data.length > 0) {
                 setStores(data.data.map(s => s.store));
                 setConfirmed(true);
+                // Try fetching pincode via reverse geocoding if it wasn't provided directly
             } else {
                 setStores([]);
                 setError('No stores found near this pincode');
@@ -43,6 +44,49 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleGeolocation = () => {
+        if (!navigator.geolocation) {
+            setError('Geolocation is not supported by your browser');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                try {
+                    const { data } = await API.get(`/stores/nearby?lat=${latitude}&lng=${longitude}&radius=50`);
+                    if (data.success && data.data.length > 0) {
+                        setStores(data.data.map(s => s.store));
+                        setConfirmed(true);
+                        // Optional: Get pincode from store so we can set it in local storage
+                        const nearestStore = data.data[0].store;
+                        if (nearestStore.pincode) {
+                            setPincode(nearestStore.pincode);
+                        } else {
+                            setPincode('GPS Location');
+                        }
+                    } else {
+                        setStores([]);
+                        setError('No stores found near your current location within 50km');
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch nearby stores from GPS:', err);
+                    setStores([]);
+                    setError('Failed to find stores via GPS. Please enter a pincode.');
+                } finally {
+                    setLoading(false);
+                }
+            },
+            (err) => {
+                setLoading(false);
+                setError('Failed to get your location. Please allow location access or type your pincode.');
+            }
+        );
     };
 
     const handleSubmit = (e) => {
@@ -115,6 +159,7 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
 
                                 <button
                                     type="button"
+                                    onClick={handleGeolocation}
                                     className="flex items-center gap-2 text-blue-600 text-sm font-bold hover:text-blue-800 transition-colors"
                                 >
                                     <Navigation className="h-4 w-4" />
