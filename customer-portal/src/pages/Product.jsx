@@ -255,7 +255,12 @@ const Product = () => {
                                     <StoreIcon className="w-5 h-5 text-white" />
                                 </div>
                                 <div>
-                                    <p className="font-black text-sm text-blue-900 uppercase">{product.storeName}</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-black text-sm text-blue-900 uppercase">{product.storeName}</p>
+                                        {product.companyName && (
+                                            <span className="text-[9px] bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded-full font-black uppercase">{product.companyName}</span>
+                                        )}
+                                    </div>
                                     {product.storeInfo?.address && (
                                         <p className="text-xs text-blue-600 font-bold flex items-center gap-1 mt-0.5">
                                             <MapPin className="w-3 h-3" /> {product.storeInfo.address}

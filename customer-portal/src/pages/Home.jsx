@@ -359,7 +359,18 @@ const Home = () => {
                                         Delivering from {nearbyStoresData.length} store{nearbyStoresData.length > 1 ? 's' : ''} near {currentPincode}
                                     </p>
                                     <p className="text-blue-200 text-xs font-bold mt-0.5">
-                                        {nearbyStoresData.map(s => s.store.distance != null ? `${s.store.name} (${s.store.distance}km)` : s.store.name).join(' · ')}
+                                        {(() => {
+                                            const groups = {};
+                                            nearbyStoresData.forEach(s => {
+                                                const company = s.store.companyName || '';
+                                                if (!groups[company]) groups[company] = [];
+                                                const info = s.store.distance != null ? `${s.store.name} (${s.store.distance}km)` : s.store.name;
+                                                groups[company].push(info);
+                                            });
+                                            return Object.entries(groups).map(([company, storeNames]) =>
+                                                company ? `${company} — ${storeNames.join(', ')}` : storeNames.join(', ')
+                                            ).join(' · ');
+                                        })()}
                                     </p>
                                 </div>
                             </div>
@@ -393,7 +404,7 @@ const Home = () => {
 
                     {/* Trending / Featured - first 10 products */}
                     <GopuffProductCarousel
-                        title={`TRENDING NEAR ${currentPincode}.`}
+                        title="TRENDING IN YOUR AREA."
                         products={trendingProducts}
                         onMoreClick={() => setView('all-products')}
                     />

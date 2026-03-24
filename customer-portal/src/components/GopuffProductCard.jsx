@@ -79,7 +79,7 @@ const GopuffProductCard = ({ product, className = "" }) => {
           {product.storeName && (
             <div className="flex items-center gap-1 text-blue-600 text-[9px] font-black uppercase tracking-tighter">
               <StoreIcon className="w-3 h-3" />
-              {product.storeName}
+              {product.companyName ? `${product.companyName} · ` : ''}{product.storeName}
             </div>
           )}
           {product.promo && (

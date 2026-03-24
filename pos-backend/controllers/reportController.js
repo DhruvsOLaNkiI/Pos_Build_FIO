@@ -33,8 +33,10 @@ const getSalesReport = async (req, res, next) => {
             matchStage.storeId = storeId;
         }
 
-        // Get all sales in range
-        const sales = await Sale.find(matchStage).sort({ createdAt: -1 });
+        // Get all sales in range with populated products
+        const sales = await Sale.find(matchStage)
+            .sort({ createdAt: -1 })
+            .populate('items.product', 'name brand');
 
         // KPIs
         const totalRevenue = sales.reduce((sum, s) => sum + s.grandTotal, 0);
@@ -80,29 +82,11 @@ const getSalesReport = async (req, res, next) => {
         });
         const salesTrend = Object.values(trendMap).sort((a, b) => a.date.localeCompare(b.date));
 
-        // Brand-wise sales breakdown
-        // Build a product ID -> brand lookup map
-        const allProductIds = new Set();
-        sales.forEach(sale => {
-            sale.items.forEach(item => {
-                if (item.product) allProductIds.add(item.product.toString());
-            });
-        });
-
-        const productsForBrand = await Product.find(
-            { _id: { $in: Array.from(allProductIds) } },
-            { _id: 1, brand: 1 }
-        );
-        const productBrandMap = {};
-        productsForBrand.forEach(p => {
-            productBrandMap[p._id.toString()] = p.brand || 'No Brand';
-        });
-
-        // Aggregate by brand
+        // Brand-wise sales breakdown using populated data
         const brandMap = {};
         sales.forEach(sale => {
             sale.items.forEach(item => {
-                const brand = productBrandMap[item.product?.toString()] || 'No Brand';
+                const brand = (item.product && item.product.brand) ? item.product.brand : 'No Brand';
                 if (!brandMap[brand]) {
                     brandMap[brand] = { brand, revenue: 0, quantity: 0, products: {} };
                 }
@@ -178,23 +162,19 @@ const getProfitLossReport = async (req, res, next) => {
             expenseQuery.storeId = storeId;
         }
 
-        // Revenue from sales
-        const sales = await Sale.find(query);
+        // Revenue from sales with populated products
+        const sales = await Sale.find(query).populate('items.product', 'purchasePrice name');
         const totalRevenue = sales.reduce((sum, s) => sum + s.grandTotal, 0);
         const totalGST = sales.reduce((sum, s) => sum + s.totalGST, 0);
 
-        // Cost of goods sold (from sale items × purchase price)
+        // Cost of goods sold (calculated from populated products)
         let costOfGoods = 0;
-        for (const sale of sales) {
-            for (const item of sale.items) {
-                // Try to get purchase price from product
-                const Product = require('../models/Product');
-                const product = await Product.findById(item.product);
-                if (product) {
-                    costOfGoods += product.purchasePrice * item.quantity;
-                }
-            }
-        }
+        sales.forEach((sale) => {
+            sale.items.forEach((item) => {
+                const purchasePrice = item.product?.purchasePrice || 0;
+                costOfGoods += purchasePrice * item.quantity;
+            });
+        });
 
         // Expenses in the same period
         const expenses = await Expense.find(expenseQuery);

@@ -471,8 +471,8 @@ router.get('/stores/nearby', async (req, res, next) => {
             return next(new Error('Could not determine your location. Please use GPS or enter a valid pincode.'));
         }
 
-        // Fetch all active stores
-        let allStores = await Store.find({ isActive: true });
+        // Fetch all active stores with company info
+        let allStores = await Store.find({ isActive: true }).populate('companyId', 'name');
 
         // Filter stores by actual distance using Haversine
         const nearbyStores = [];
@@ -500,12 +500,13 @@ router.get('/stores/nearby', async (req, res, next) => {
                     isActive: true
                 }).select('-purchasePrice -stock -reorderLevel -supplier -__v');
 
-                // Attach store name, code, and id to each product so frontend can display it
+                // Attach store name, code, company name, and id to each product so frontend can display it
                 const productsWithStore = products.map(p => {
                     const prod = p.toObject();
                     prod.storeName = store.name;
                     prod.storeCode = store.code;
                     prod.storeId = store._id;
+                    prod.companyName = store.companyId?.name || '';
                     return prod;
                 });
 
@@ -517,7 +518,9 @@ router.get('/stores/nearby', async (req, res, next) => {
                         address: store.address,
                         pincode: store.pincode,
                         contactNumber: store.contactNumber,
-                        distance: Math.round(distance * 10) / 10 // km rounded to 1 decimal
+                        distance: Math.round(distance * 10) / 10,
+                        companyName: store.companyId?.name || '',
+                        companyId: store.companyId?._id || store.companyId,
                     },
                     products: productsWithStore
                 };

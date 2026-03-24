@@ -244,6 +244,7 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
                                                 )}
                                             </div>
                                             <p className="text-[10px] text-gray-400 font-bold uppercase">
+                                                {store.companyName && <span className="text-blue-500">{store.companyName} · </span>}
                                                 {store.code} {store.address ? `· ${store.address}` : ''}
                                             </p>
                                         </div>

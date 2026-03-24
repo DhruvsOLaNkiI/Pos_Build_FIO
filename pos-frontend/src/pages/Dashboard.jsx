@@ -336,9 +336,9 @@ const Dashboard = () => {
                         {/* Heatmap Grid */}
                         <div style={{ display: 'grid', gridTemplateColumns: '50px repeat(7, 1fr)', gridTemplateRows: `repeat(9, 1fr) auto`, gap: '6px', height: '320px' }}>
                             {HEATMAP_Y_LABELS.map((lbl, rowIndex) => (
-                                <>
+                                <div key={`heatmap-row-${rowIndex}`} style={{ display: 'contents' }}>
                                     {/* Y-axis label */}
-                                    <div key={`y-${rowIndex}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '11px', fontWeight: 600, opacity: 0.5 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '11px', fontWeight: 600, opacity: 0.5 }}>
                                         {lbl}
                                     </div>
                                     {/* Cells for this row */}
@@ -347,7 +347,7 @@ const Dashboard = () => {
                                         const cellStyle = getCubeStyle(val, maxOrderCount);
                                         return (
                                             <div
-                                                key={`${colIndex}-${rowIndex}`}
+                                                key={`cell-${colIndex}-${rowIndex}`}
                                                 title={val > 0 ? `${val} order${val > 1 ? 's' : ''} · ${HEATMAP_X_LABELS[colIndex]} ${HEATMAP_Y_LABELS[rowIndex]}` : `No orders · ${HEATMAP_X_LABELS[colIndex]} ${HEATMAP_Y_LABELS[rowIndex]}`}
                                                 style={{
                                                     ...cellStyle,
@@ -368,7 +368,7 @@ const Dashboard = () => {
                                             </div>
                                         );
                                     })}
-                                </>
+                                </div>
                             ))}
                             {/* X-axis labels */}
                             <div /> {/* empty cell for y-axis column */}
@@ -412,7 +412,7 @@ const Dashboard = () => {
                                 const maxQty = stats.topProducts[0]?.qty || 1;
                                 const barWidth = Math.max((p.qty / maxQty) * 100, 8);
                                 return (
-                                    <div key={i} className="flex flex-col gap-2 p-4 rounded-xl border border-border/50 bg-muted/20">
+                                    <div key={p._id || `top-product-${i}`} className="flex flex-col gap-2 p-4 rounded-xl border border-border/50 bg-muted/20">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center auto-cols-min gap-3 min-w-0">
                                                 <div className={`w-8 h-8 rounded-full flex shrink-0 items-center justify-center text-sm font-black shadow-sm ${i === 0 ? 'bg-yellow-400 text-yellow-900' :
