@@ -47,6 +47,14 @@ const customerAddressSchema = new mongoose.Schema(
             default: '',
             trim: true,
         },
+        latitude: {
+            type: Number,
+            default: 0,
+        },
+        longitude: {
+            type: Number,
+            default: 0,
+        },
         isDefault: {
             type: Boolean,
             default: false,

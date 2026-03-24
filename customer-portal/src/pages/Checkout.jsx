@@ -9,6 +9,7 @@ import {
     Plus, Minus, X, Home, Building2, MoreHorizontal,
     Banknote, Smartphone, Wallet, Store as StoreIcon
 } from 'lucide-react';
+import MapLocationPicker from '../components/MapLocationPicker';
 
 const formatCurrency = (v) => `₹${Number(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`;
 
@@ -273,6 +274,16 @@ const Checkout = () => {
                                     type="text" placeholder="Landmark (optional)" value={addrForm.landmark}
                                     onChange={e => setAddrForm(f => ({ ...f, landmark: e.target.value }))}
                                     className="px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none"
+                                />
+                            </div>
+
+                            {/* Map Location Picker */}
+                            <div className="mt-4">
+                                <MapLocationPicker
+                                    latitude={addrForm.latitude || 0}
+                                    longitude={addrForm.longitude || 0}
+                                    onLocationChange={(lat, lng) => setAddrForm(f => ({ ...f, latitude: lat, longitude: lng }))}
+                                    label="Pin Location on Map (Optional)"
                                 />
                             </div>
 

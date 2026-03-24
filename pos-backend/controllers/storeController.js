@@ -78,8 +78,13 @@ exports.createStore = async (req, res) => {
 
         req.body.code = req.body.code.toUpperCase();
 
-        // Automatically geocode if pincode is present
-        if (req.body.pincode) {
+        // Use explicit lat/lng from map picker if provided, otherwise geocode from pincode
+        if (req.body.latitude && req.body.longitude) {
+            req.body.location = {
+                type: 'Point',
+                coordinates: [parseFloat(req.body.longitude), parseFloat(req.body.latitude)]
+            };
+        } else if (req.body.pincode) {
             const coords = await geocodePincode(req.body.pincode);
             if (coords) {
                 req.body.location = {
@@ -131,8 +136,13 @@ exports.updateStore = async (req, res) => {
 
         if (req.body.code) req.body.code = req.body.code.toUpperCase();
 
-        // Re-geocode if pincode is updated
-        if (req.body.pincode && req.body.pincode !== store.pincode) {
+        // Use explicit lat/lng from map picker if provided, otherwise re-geocode from pincode
+        if (req.body.latitude && req.body.longitude) {
+            req.body.location = {
+                type: 'Point',
+                coordinates: [parseFloat(req.body.longitude), parseFloat(req.body.latitude)]
+            };
+        } else if (req.body.pincode && req.body.pincode !== store.pincode) {
             const coords = await geocodePincode(req.body.pincode);
             if (coords) {
                 req.body.location = {

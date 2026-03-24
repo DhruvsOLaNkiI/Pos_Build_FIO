@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Building } from 'lucide-react';
+import { Plus, Edit, Trash2, Building, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
+import MapLocationPicker from '@/components/MapLocationPicker';
 
 const Stores = () => {
     const { toast } = useToast();
@@ -17,7 +18,7 @@ const Stores = () => {
 
     // Modal state for Add/Edit
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({ name: '', code: '', address: '', pincode: '', contactNumber: '', isDefault: false, defaultWarehouseId: '' });
+    const [formData, setFormData] = useState({ name: '', code: '', address: '', pincode: '', contactNumber: '', isDefault: false, defaultWarehouseId: '', latitude: 0, longitude: 0 });
     const [editingId, setEditingId] = useState(null);
 
     useEffect(() => {
@@ -97,7 +98,7 @@ const Stores = () => {
     };
 
     const openCreateModal = () => {
-        setFormData({ name: '', code: '', address: '', pincode: '', contactNumber: '', isDefault: false, defaultWarehouseId: '' });
+        setFormData({ name: '', code: '', address: '', pincode: '', contactNumber: '', isDefault: false, defaultWarehouseId: '', latitude: 0, longitude: 0 });
         setEditingId(null);
         setIsModalOpen(true);
     };
@@ -110,7 +111,9 @@ const Stores = () => {
             pincode: wh.pincode || '',
             contactNumber: wh.contactNumber || '',
             isDefault: wh.isDefault || false,
-            defaultWarehouseId: wh.defaultWarehouseId?._id || wh.defaultWarehouseId || ''
+            defaultWarehouseId: wh.defaultWarehouseId?._id || wh.defaultWarehouseId || '',
+            latitude: wh.location?.coordinates?.[1] || 0,
+            longitude: wh.location?.coordinates?.[0] || 0,
         });
         setEditingId(wh._id);
         setIsModalOpen(true);
@@ -269,6 +272,16 @@ const Stores = () => {
                                     onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
                                     required
                                     placeholder="e.g. 110001"
+                                />
+                            </div>
+
+                            {/* Map Location Picker */}
+                            <div className="mt-4">
+                                <MapLocationPicker
+                                    latitude={formData.latitude || 0}
+                                    longitude={formData.longitude || 0}
+                                    onLocationChange={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
+                                    label="Store GPS Location"
                                 />
                             </div>
                             <div className="flex gap-2 justify-end mt-6">

@@ -35,10 +35,18 @@ const Home = () => {
         }
     }, []);
 
-    const fetchNearbyStores = useCallback(async (pincode) => {
-        if (!pincode) return;
+    const fetchNearbyStores = useCallback(async (locationStr) => {
+        if (!locationStr) return;
         try {
-            const { data } = await API.get(`/stores/nearby?pincode=${pincode}`);
+            // Check if it's lat,lng format or pincode
+            let params;
+            if (locationStr.includes(',')) {
+                const [lat, lng] = locationStr.split(',');
+                params = `lat=${lat}&lng=${lng}`;
+            } else {
+                params = `pincode=${locationStr}`;
+            }
+            const { data } = await API.get(`/stores/nearby?${params}`);
             if (data.success) {
                 setNearbyStoresData(data.data);
             }
@@ -351,7 +359,7 @@ const Home = () => {
                                         Delivering from {nearbyStoresData.length} store{nearbyStoresData.length > 1 ? 's' : ''} near {currentPincode}
                                     </p>
                                     <p className="text-blue-200 text-xs font-bold mt-0.5">
-                                        {nearbyStoresData.map(s => s.store.name).join(' · ')}
+                                        {nearbyStoresData.map(s => s.store.distance != null ? `${s.store.name} (${s.store.distance}km)` : s.store.name).join(' · ')}
                                     </p>
                                 </div>
                             </div>

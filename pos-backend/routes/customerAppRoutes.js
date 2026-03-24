@@ -428,60 +428,73 @@ router.get('/offers', async (req, res, next) => {
         next(error);
     }
 });
+// Haversine distance calculation in km
+function haversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
 // @desc    Get Nearby Stores based on pincode or GPS with their products
 // @route   GET /api/customer-app/stores/nearby?pincode=123456 OR ?lat=...&lng=...
 // @access  Public
 router.get('/stores/nearby', async (req, res, next) => {
     try {
-        const { pincode, lat, lng, radius = 20 } = req.query; // Radius in KM
+        const { pincode, lat, lng, radius = 100 } = req.query; // Radius in KM (default 100km)
         const { geocodePincode } = require('../utils/geocoder');
         const Product = require('../models/Product');
+        const maxRadius = parseInt(radius);
 
-        let stores = [];
+        // Get user coordinates
+        let userLat = null;
+        let userLng = null;
 
         if (lat && lng) {
-            // Use GPS coordinates directly
-            stores = await Store.find({
-                isActive: true,
-                location: {
-                    $near: {
-                        $geometry: {
-                            type: 'Point',
-                            coordinates: [parseFloat(lng), parseFloat(lat)]
-                        },
-                        $maxDistance: parseInt(radius) * 1000 // Convert km to meters
-                    }
-                }
-            });
+            userLat = parseFloat(lat);
+            userLng = parseFloat(lng);
         } else if (pincode) {
-            // Use pincode to get coordinates
             const coords = await geocodePincode(pincode);
-            if (!coords) {
-                // Fallback: Exact plain-text match if geocoding fails
-                stores = await Store.find({ pincode, isActive: true });
-            } else {
-                // Use coordinates from geocoder
-                stores = await Store.find({
-                    isActive: true,
-                    location: {
-                        $near: {
-                            $geometry: {
-                                type: 'Point',
-                                coordinates: [coords.lng, coords.lat]
-                            },
-                            $maxDistance: parseInt(radius) * 1000 // Convert km to meters
-                        }
-                    }
-                });
+            if (coords) {
+                userLat = coords.lat;
+                userLng = coords.lng;
             }
-        } else {
-            res.status(400);
-            return next(new Error('Please provide either active GPS coordinates or a pincode'));
         }
+
+        if (!userLat || !userLng || (userLat === 0 && userLng === 0)) {
+            // No valid coordinates — return error, no fallback to all stores
+            res.status(400);
+            return next(new Error('Could not determine your location. Please use GPS or enter a valid pincode.'));
+        }
+
+        // Fetch all active stores
+        let allStores = await Store.find({ isActive: true });
+
+        // Filter stores by actual distance using Haversine
+        const nearbyStores = [];
+        for (const store of allStores) {
+            const storeLat = store.location?.coordinates?.[1];
+            const storeLng = store.location?.coordinates?.[0];
+
+            // Skip stores without valid coordinates
+            if (!storeLat || !storeLng || (storeLat === 0 && storeLng === 0)) continue;
+
+            const dist = haversineDistance(userLat, userLng, storeLat, storeLng);
+            if (dist <= maxRadius) {
+                nearbyStores.push({ store, distance: dist });
+            }
+        }
+
+        // Sort by distance (nearest first)
+        nearbyStores.sort((a, b) => a.distance - b.distance);
 
         // For each store, fetch its products and attach store info to each product
         const storesWithProducts = await Promise.all(
-            stores.map(async (store) => {
+            nearbyStores.map(async ({ store, distance }) => {
                 const products = await Product.find({
                     storeId: store._id,
                     isActive: true
@@ -503,7 +516,8 @@ router.get('/stores/nearby', async (req, res, next) => {
                         code: store.code,
                         address: store.address,
                         pincode: store.pincode,
-                        contactNumber: store.contactNumber
+                        contactNumber: store.contactNumber,
+                        distance: Math.round(distance * 10) / 10 // km rounded to 1 decimal
                     },
                     products: productsWithStore
                 };
@@ -514,8 +528,10 @@ router.get('/stores/nearby', async (req, res, next) => {
 
         res.status(200).json({ 
             success: true, 
-            storeCount: stores.length,
+            storeCount: storesWithProducts.length,
             productCount: totalProducts,
+            radius: maxRadius,
+            userLocation: { lat: userLat, lng: userLng },
             data: storesWithProducts 
         });
 

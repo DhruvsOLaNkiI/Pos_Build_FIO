@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, X, Navigation, Store as StoreIcon, Loader2, Check } from 'lucide-react';
+import { MapPin, X, Store as StoreIcon, Loader2, Check } from 'lucide-react';
 import API from '../services/api';
+import MapLocationPicker from './MapLocationPicker';
 
 const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
     const [pincode, setPincode] = useState('');
@@ -8,6 +9,10 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
     const [stores, setStores] = useState([]);
     const [loading, setLoading] = useState(false);
     const [confirmed, setConfirmed] = useState(false);
+    const [useMap, setUseMap] = useState(false);
+    const [gpsLat, setGpsLat] = useState(null);
+    const [gpsLng, setGpsLng] = useState(null);
+    const [radius, setRadius] = useState(100); // km
 
     useEffect(() => {
         const savedLocation = localStorage.getItem('customer_pincode');
@@ -21,72 +26,28 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
             setStores([]);
             setConfirmed(false);
             setLoading(false);
+            setUseMap(false);
         }
     }, [isOpen]);
 
-    const fetchNearbyStores = async (code) => {
+    const fetchNearbyStores = async (params) => {
         setLoading(true);
         setError('');
         try {
-            const { data } = await API.get(`/stores/nearby?pincode=${code}`);
+            const { data } = await API.get(`/stores/nearby?${params}`);
             if (data.success && data.data.length > 0) {
                 setStores(data.data.map(s => s.store));
                 setConfirmed(true);
-                // Try fetching pincode via reverse geocoding if it wasn't provided directly
             } else {
                 setStores([]);
-                setError('No stores found near this pincode');
+                setError(`No stores found within ${radius} km. Try increasing the range.`);
             }
         } catch (err) {
-            console.error('Failed to fetch nearby stores:', err);
             setStores([]);
-            setError('Failed to find stores. Please try again.');
+            setError(err.response?.data?.message || 'Failed to find stores. Please try again.');
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleGeolocation = () => {
-        if (!navigator.geolocation) {
-            setError('Geolocation is not supported by your browser');
-            return;
-        }
-
-        setLoading(true);
-        setError('');
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const { latitude, longitude } = position.coords;
-                try {
-                    const { data } = await API.get(`/stores/nearby?lat=${latitude}&lng=${longitude}&radius=50`);
-                    if (data.success && data.data.length > 0) {
-                        setStores(data.data.map(s => s.store));
-                        setConfirmed(true);
-                        // Optional: Get pincode from store so we can set it in local storage
-                        const nearestStore = data.data[0].store;
-                        if (nearestStore.pincode) {
-                            setPincode(nearestStore.pincode);
-                        } else {
-                            setPincode('GPS Location');
-                        }
-                    } else {
-                        setStores([]);
-                        setError('No stores found near your current location within 50km');
-                    }
-                } catch (err) {
-                    console.error('Failed to fetch nearby stores from GPS:', err);
-                    setStores([]);
-                    setError('Failed to find stores via GPS. Please enter a pincode.');
-                } finally {
-                    setLoading(false);
-                }
-            },
-            (err) => {
-                setLoading(false);
-                setError('Failed to get your location. Please allow location access or type your pincode.');
-            }
-        );
     };
 
     const handleSubmit = (e) => {
@@ -95,16 +56,30 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
             setError('Please enter a valid pincode');
             return;
         }
-
         localStorage.setItem('customer_pincode', pincode);
-        fetchNearbyStores(pincode);
+        fetchNearbyStores(`pincode=${pincode}&radius=${radius}`);
+    };
+
+    const handleMapLocationChange = (lat, lng) => {
+        setGpsLat(lat);
+        setGpsLng(lng);
+    };
+
+    const handleSearchByLocation = () => {
+        if (gpsLat && gpsLng) {
+            localStorage.setItem('customer_pincode', `${gpsLat.toFixed(4)},${gpsLng.toFixed(4)}`);
+            fetchNearbyStores(`lat=${gpsLat}&lng=${gpsLng}&radius=${radius}`);
+        }
     };
 
     const handleConfirmStore = (store) => {
-        // Save selected store info
         localStorage.setItem('customer_store_name', store.name);
         localStorage.setItem('customer_store_id', store._id);
-        onLocationSelect(pincode);
+        if (gpsLat && gpsLng) {
+            localStorage.setItem('customer_lat', gpsLat);
+            localStorage.setItem('customer_lng', gpsLng);
+        }
+        onLocationSelect(gpsLat ? `${gpsLat.toFixed(4)},${gpsLng.toFixed(4)}` : pincode);
         onClose();
     };
 
@@ -112,7 +87,11 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
         if (stores.length > 0) {
             localStorage.setItem('customer_store_name', stores.map(s => s.name).join(' · '));
         }
-        onLocationSelect(pincode);
+        if (gpsLat && gpsLng) {
+            localStorage.setItem('customer_lat', gpsLat);
+            localStorage.setItem('customer_lng', gpsLng);
+        }
+        onLocationSelect(gpsLat ? `${gpsLat.toFixed(4)},${gpsLng.toFixed(4)}` : pincode);
         onClose();
     };
 
@@ -131,61 +110,120 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
                     </button>
                 </div>
 
-                <div className="p-6">
+                <div className="p-6 max-h-[70vh] overflow-y-auto">
                     {!confirmed ? (
                         <>
-                            <p className="text-sm font-bold text-gray-500 mb-6 italic">
-                                Tell us your pincode to see the fastest delivery options and stores nearby.
+                            <p className="text-sm font-bold text-gray-500 mb-4 italic">
+                                Use GPS for accurate delivery or enter your pincode.
                             </p>
 
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-black uppercase text-gray-700 mb-2">Pincode</label>
-                                    <div className="relative">
-                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={pincode}
-                                            onChange={(e) => {
-                                                setPincode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6));
-                                                setError('');
-                                            }}
-                                            placeholder="e.g. 400001"
-                                            className="w-full pl-10 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:bg-white focus:border-blue-500 transition-all outline-none"
-                                        />
-                                    </div>
-                                    {error && <p className="text-red-500 text-xs font-bold mt-2">{error}</p>}
+                            {/* Toggle: Map vs Pincode */}
+                            <div className="flex gap-2 mb-5">
+                                <button
+                                    onClick={() => setUseMap(false)}
+                                    className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!useMap
+                                        ? 'bg-blue-600 text-white shadow'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    Pincode
+                                </button>
+                                <button
+                                    onClick={() => setUseMap(true)}
+                                    className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${useMap
+                                        ? 'bg-blue-600 text-white shadow'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    Map / GPS
+                                </button>
+                            </div>
+
+                            {/* Radius Selector */}
+                            <div className="mb-5 bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-black text-gray-600 uppercase tracking-wider">Search Range</span>
+                                    <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{radius} km</span>
                                 </div>
+                                <input
+                                    type="range"
+                                    min="10"
+                                    max="200"
+                                    step="10"
+                                    value={radius}
+                                    onChange={(e) => setRadius(parseInt(e.target.value))}
+                                    className="w-full accent-blue-600 h-2 rounded-full cursor-pointer"
+                                />
+                                <div className="flex justify-between mt-1">
+                                    <span className="text-[10px] text-gray-400 font-bold">10 km</span>
+                                    <span className="text-[10px] text-gray-400 font-bold">200 km</span>
+                                </div>
+                            </div>
 
-                                <button
-                                    type="button"
-                                    onClick={handleGeolocation}
-                                    className="flex items-center gap-2 text-blue-600 text-sm font-bold hover:text-blue-800 transition-colors"
-                                >
-                                    <Navigation className="h-4 w-4" />
-                                    Use current location GPS
-                                </button>
+                            {useMap ? (
+                                <div className="space-y-3">
+                                    <MapLocationPicker
+                                        latitude={gpsLat}
+                                        longitude={gpsLng}
+                                        onLocationChange={handleMapLocationChange}
+                                        label="Your Delivery Location"
+                                    />
+                                    <button
+                                        onClick={handleSearchByLocation}
+                                        disabled={loading || !gpsLat}
+                                        className="w-full bg-blue-600 text-white font-black uppercase tracking-widest py-3.5 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                FINDING STORES...
+                                            </>
+                                        ) : (
+                                            'FIND STORES'
+                                        )}
+                                    </button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-black uppercase text-gray-700 mb-2">Pincode</label>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={pincode}
+                                                onChange={(e) => {
+                                                    setPincode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6));
+                                                    setError('');
+                                                }}
+                                                placeholder="e.g. 400001"
+                                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:bg-white focus:border-blue-500 transition-all outline-none"
+                                            />
+                                        </div>
+                                        {error && <p className="text-red-500 text-xs font-bold mt-2">{error}</p>}
+                                    </div>
 
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full bg-blue-600 text-white font-black uppercase tracking-widest py-3.5 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                                >
-                                    {loading ? (
-                                        <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                            FINDING STORES...
-                                        </>
-                                    ) : (
-                                        'FIND STORES'
-                                    )}
-                                </button>
-                            </form>
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="w-full bg-blue-600 text-white font-black uppercase tracking-widest py-3.5 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                FINDING STORES...
+                                            </>
+                                        ) : (
+                                            'FIND STORES'
+                                        )}
+                                    </button>
+                                </form>
+                            )}
                         </>
                     ) : (
                         <>
                             <p className="text-sm font-bold text-gray-500 mb-4 italic">
-                                {stores.length} store{stores.length > 1 ? 's' : ''} found near <span className="text-blue-600 font-black">{pincode}</span>
+                                {stores.length} store{stores.length > 1 ? 's' : ''} found near you
                             </p>
 
                             <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
@@ -199,7 +237,12 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
                                             <StoreIcon className="w-5 h-5 text-blue-600" />
                                         </div>
                                         <div className="flex-1">
-                                            <p className="font-black text-sm text-gray-900 uppercase">{store.name}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-black text-sm text-gray-900 uppercase">{store.name}</p>
+                                                {store.distance != null && (
+                                                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-black">{store.distance} km</span>
+                                                )}
+                                            </div>
                                             <p className="text-[10px] text-gray-400 font-bold uppercase">
                                                 {store.code} {store.address ? `· ${store.address}` : ''}
                                             </p>
@@ -223,7 +266,7 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
                                 }}
                                 className="w-full text-gray-400 font-bold text-xs uppercase tracking-wider mt-3 hover:text-gray-600 transition-colors"
                             >
-                                Change Pincode
+                                Change Location
                             </button>
                         </>
                     )}
