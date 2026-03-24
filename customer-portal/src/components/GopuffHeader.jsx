@@ -8,7 +8,7 @@ import LocationPickerModal from './LocationPickerModal';
 const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }) => {
     const { customer } = useAuth();
     const { totalItems } = useCart();
-    
+
     const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
     const [isDealsOpen, setIsDealsOpen] = useState(false);
@@ -78,7 +78,7 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
                 <div className="flex items-center gap-6 relative">
                     {/* Shop Categories Dropdown */}
                     <div className="relative group">
-                        <button 
+                        <button
                             onMouseEnter={() => setIsCategoryOpen(true)}
                             onMouseLeave={() => setIsCategoryOpen(false)}
                             className="flex items-center gap-1 hover:text-blue-600 transition-colors py-2"
@@ -86,14 +86,14 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
                             Shop Categories <ChevronDown className="h-3 w-3" />
                         </button>
                         {isCategoryOpen && (
-                            <div 
+                            <div
                                 onMouseEnter={() => setIsCategoryOpen(true)}
                                 onMouseLeave={() => setIsCategoryOpen(false)}
                                 className="absolute top-full left-0 bg-white shadow-2xl border border-gray-100 py-4 min-w-[280px] grid grid-cols-2 gap-x-2 px-2 z-[60] normal-case rounded-xl italic"
                             >
                                 {categories.map(cat => (
-                                    <button 
-                                        key={cat} 
+                                    <button
+                                        key={cat}
                                         onClick={() => handleCategoryClick(cat)}
                                         className="text-left px-4 py-2.5 hover:bg-gray-50 rounded-lg text-gray-800 font-bold tracking-tight text-xs uppercase"
                                     >
@@ -106,7 +106,7 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
 
                     {/* Deals Dropdown */}
                     <div className="relative group">
-                        <button 
+                        <button
                             onMouseEnter={() => setIsDealsOpen(true)}
                             onMouseLeave={() => setIsDealsOpen(false)}
                             className="flex items-center gap-1 hover:text-blue-600 transition-colors py-2"
@@ -114,7 +114,7 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
                             Deals <ChevronDown className="h-3 w-3" />
                         </button>
                         {isDealsOpen && (
-                            <div 
+                            <div
                                 onMouseEnter={() => setIsDealsOpen(true)}
                                 onMouseLeave={() => setIsDealsOpen(false)}
                                 className="absolute top-full left-0 bg-white shadow-2xl border border-gray-100 py-4 min-w-[220px] z-[60] normal-case rounded-xl italic px-2"
@@ -124,8 +124,8 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
                                     { name: 'Offers', type: 'offers' },
                                     { name: 'Deals', type: 'deals' }
                                 ].map(deal => (
-                                    <button 
-                                        key={deal.type} 
+                                    <button
+                                        key={deal.type}
                                         onClick={() => handleDealClick(deal.type)}
                                         className="w-full text-left px-4 py-3 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-gray-800 font-extrabold tracking-tighter text-xs uppercase transition-all"
                                     >
@@ -139,7 +139,7 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
                 <div className="flex items-center gap-2">
                     <span className="text-gray-900 hidden sm:inline">ARRIVES IN <span className="text-blue-600">FAST</span></span>
                     <span className="text-gray-200 mx-1 hidden sm:inline">•</span>
-                    <button 
+                    <button
                         onClick={() => setIsLocationModalOpen(true)}
                         className="flex items-center gap-1.5 hover:text-blue-600 transition-colors bg-gray-100 px-3 py-1.5 rounded-full"
                     >
@@ -155,7 +155,7 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
                 </div>
             </div>
 
-            <LocationPickerModal 
+            <LocationPickerModal
                 isOpen={isLocationModalOpen}
                 onClose={() => setIsLocationModalOpen(false)}
                 onLocationSelect={handleLocationSelect}
