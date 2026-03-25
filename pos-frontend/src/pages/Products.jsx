@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import API from '@/services/api';
@@ -15,6 +15,10 @@ import {
     TrendingUp,
     Package,
     Trash2,
+    Upload,
+    Download,
+    FileSpreadsheet,
+    Loader2,
 } from 'lucide-react';
 import {
     Dialog,
@@ -36,6 +40,9 @@ const Products = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
     const [selectedIds, setSelectedIds] = useState([]);
+    const [csvImporting, setCsvImporting] = useState(false);
+    const [csvExporting, setCsvExporting] = useState(false);
+    const csvInputRef = useRef(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -235,6 +242,74 @@ const Products = () => {
         setSelectedIds(checked ? filteredProducts.map(p => p._id) : []);
     };
 
+    // === CSV Import / Export Handlers ===
+    const handleExportCsv = async () => {
+        try {
+            setCsvExporting(true);
+            const response = await API.get('/products/export-csv', { responseType: 'blob' });
+            const blob = new Blob([response.data], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `products_export_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast({ title: 'Success', description: 'Products exported successfully' });
+        } catch (error) {
+            toast({ title: 'Error', description: 'Failed to export products', variant: 'destructive' });
+        } finally {
+            setCsvExporting(false);
+        }
+    };
+
+    const handleImportCsv = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.name.endsWith('.csv')) {
+            toast({ title: 'Error', description: 'Please select a CSV file', variant: 'destructive' });
+            return;
+        }
+
+        try {
+            setCsvImporting(true);
+            const formData = new FormData();
+            formData.append('csvFile', file);
+            const { data } = await API.post('/products/import-csv', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            toast({
+                title: 'Import Complete',
+                description: `${data.imported} products imported successfully${data.errors?.length ? ` (${data.errors.length} rows had issues)` : ''}`
+            });
+            fetchProducts();
+        } catch (error) {
+            toast({ title: 'Import Failed', description: error.response?.data?.message || 'Failed to import CSV', variant: 'destructive' });
+        } finally {
+            setCsvImporting(false);
+            if (csvInputRef.current) csvInputRef.current.value = '';
+        }
+    };
+
+    const handleDownloadTemplate = async () => {
+        try {
+            const response = await API.get('/products/csv-template', { responseType: 'blob' });
+            const blob = new Blob([response.data], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'product_import_template.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            toast({ title: 'Error', description: 'Failed to download template', variant: 'destructive' });
+        }
+    };
+
     // Get unique brands & categories for dropdowns (case-insensitive)
     const brandMap = new Map();
     const categoryMap = new Map();
@@ -280,16 +355,52 @@ const Products = () => {
                     <p className="text-muted-foreground mt-1">Manage your inventory and product catalog</p>
                 </div>
                 {!isCashier && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
                         {selectedIds.length > 0 && (
                             <Button variant="destructive" onClick={handleBulkDelete} className="gap-2">
                                 <Trash2 className="w-4 h-4" /> Delete Selected ({selectedIds.length})
                             </Button>
                         )}
                         {(user?.role === 'owner' || user?.role === 'staff') && (
-                            <Button onClick={() => navigate('/products/new')} className="gap-2">
-                                <Plus className="w-4 h-4" /> Add Product
-                            </Button>
+                            <>
+                                {/* CSV Import/Export Buttons */}
+                                <input
+                                    type="file"
+                                    ref={csvInputRef}
+                                    accept=".csv"
+                                    onChange={handleImportCsv}
+                                    className="hidden"
+                                />
+                                <Button
+                                    variant="outline"
+                                    onClick={handleDownloadTemplate}
+                                    className="gap-2 text-xs"
+                                    title="Download a sample CSV template"
+                                >
+                                    <FileSpreadsheet className="w-4 h-4" /> Template
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => csvInputRef.current?.click()}
+                                    disabled={csvImporting}
+                                    className="gap-2"
+                                >
+                                    {csvImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                    {csvImporting ? 'Importing...' : 'Import CSV'}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleExportCsv}
+                                    disabled={csvExporting}
+                                    className="gap-2"
+                                >
+                                    {csvExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                    {csvExporting ? 'Exporting...' : 'Export CSV'}
+                                </Button>
+                                <Button onClick={() => navigate('/products/new')} className="gap-2">
+                                    <Plus className="w-4 h-4" /> Add Product
+                                </Button>
+                            </>
                         )}
                     </div>
                 )}
