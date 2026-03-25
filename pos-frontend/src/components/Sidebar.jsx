@@ -30,7 +30,8 @@ import {
     Globe,
     Activity,
     RefreshCcw,
-    LayoutTemplate
+    LayoutTemplate,
+    Image
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/useToast';
@@ -77,6 +78,7 @@ const superAdminNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/super-admin/dashboard', roles: ['super-admin'], category: 'Super Admin' },
     { icon: Globe, label: 'Companies', path: '/super-admin/companies', roles: ['super-admin'], category: 'Super Admin' },
     { icon: LayoutTemplate, label: 'Portal Design', path: '/super-admin/portal-design', roles: ['super-admin'], category: 'Super Admin' },
+    { icon: Image, label: 'Banners', path: '/super-admin/banners', roles: ['super-admin'], category: 'Super Admin' },
     { icon: Activity, label: 'API Monitoring', path: '/super-admin/api-monitoring', roles: ['super-admin'], category: 'Super Admin' },
     { icon: Users, label: 'User Activity', path: '/super-admin/user-activity', roles: ['super-admin'], category: 'Super Admin' },
 ];

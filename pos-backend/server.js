@@ -85,6 +85,9 @@ app.use('/api/user-activity', require('./routes/userActivityRoutes'));
 // --- Super Admin Routes ---
 app.use('/api/super-admin', require('./routes/superAdminRoutes'));
 
+// --- Banner Routes ---
+app.use('/api/banners', require('./routes/bannerRoutes'));
+
 // Health check
 app.get('/', (req, res) => {
     res.json({ success: true, message: 'POS System API is running' });

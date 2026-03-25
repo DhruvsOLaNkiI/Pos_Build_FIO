@@ -31,6 +31,7 @@ import UserActivityAnalytics from '@/pages/UserActivityAnalytics';
 import OnlineOrders from '@/pages/OnlineOrders';
 import ReturnExchange from '@/pages/ReturnExchange';
 import GlobalPortalDesign from '@/pages/GlobalPortalDesign';
+import BannerManagement from '@/pages/BannerManagement';
 
 function App() {
     const { isAuthenticated, loading, user } = useAuth();
@@ -114,6 +115,10 @@ function App() {
                 <Route
                     path="/super-admin/portal-design"
                     element={isSuperAdmin ? <GlobalPortalDesign /> : <Navigate to="/dashboard" />}
+                />
+                <Route
+                    path="/super-admin/banners"
+                    element={<BannerManagement />}
                 />
                 <Route
                     path="/super-admin/api-monitoring"
