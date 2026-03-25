@@ -36,6 +36,7 @@ const exportProductsCsv = async (req, res, next) => {
             'stockQty',
             'minStockLevel',
             'barcode',
+            'imageUrl',
             'manufacturer',
             'warranty',
             'isActive'
@@ -53,6 +54,7 @@ const exportProductsCsv = async (req, res, next) => {
             stockQty: p.stockQty || 0,
             minStockLevel: p.minStockLevel || 10,
             barcode: p.barcode || '',
+            imageUrl: p.imageUrl || '',
             manufacturer: p.manufacturer || '',
             warranty: p.warranty || '',
             isActive: p.isActive !== false ? 'true' : 'false'
@@ -89,6 +91,11 @@ const importProductsCsv = async (req, res, next) => {
         const errors = [];
         let rowNumber = 0;
 
+        // Auto-barcode generator helper (EAN-13 style random number)
+        const generateUniqueBarcode = () => {
+            return '890' + Math.floor(Math.random() * 10000000000).toString().padStart(10, '0');
+        };
+
         await new Promise((resolve, reject) => {
             fs.createReadStream(req.file.path)
                 .pipe(csvParser({
@@ -106,13 +113,14 @@ const importProductsCsv = async (req, res, next) => {
                             errors.push({ row: rowNumber, message: `Missing category for "${row.name}"` });
                             return;
                         }
-                        if (!row.purchaseprice && !row['purchaseprice'] && !row['purchase price']) {
-                            errors.push({ row: rowNumber, message: `Missing purchase price for "${row.name}"` });
-                            return;
-                        }
-                        if (!row.sellingprice && !row['sellingprice'] && !row['selling price']) {
-                            errors.push({ row: rowNumber, message: `Missing selling price for "${row.name}"` });
-                            return;
+
+                        const pPrice = parseFloat(row.purchaseprice || row['purchase price'] || 0);
+                        const sPrice = parseFloat(row.sellingprice || row['selling price'] || 0);
+
+                        // If barcode is missing, generate one
+                        let finalBarcode = (row.barcode || '').trim();
+                        if (!finalBarcode) {
+                            finalBarcode = generateUniqueBarcode();
                         }
 
                         const productData = {
@@ -120,12 +128,13 @@ const importProductsCsv = async (req, res, next) => {
                             variant: (row.variant || '').trim(),
                             category: row.category.trim(),
                             brand: (row.brand || '').trim(),
-                            purchasePrice: parseFloat(row.purchaseprice || row['purchaseprice'] || row['purchase price']) || 0,
-                            sellingPrice: parseFloat(row.sellingprice || row['sellingprice'] || row['selling price']) || 0,
-                            gstPercent: parseFloat(row.gstpercent || row['gstpercent'] || row['gst percent'] || row['gst%']) || 0,
-                            stockQty: parseInt(row.stockqty || row['stockqty'] || row['stock qty'] || row['stock']) || 0,
-                            minStockLevel: parseInt(row.minstocklevel || row['minstocklevel'] || row['min stock level'] || row['min stock']) || 10,
-                            barcode: (row.barcode || '').trim() || undefined,
+                            purchasePrice: pPrice,
+                            sellingPrice: sPrice,
+                            gstPercent: parseFloat(row.gstpercent || row['gst percent'] || row['gst%'] || 0),
+                            stockQty: parseInt(row.stockqty || row['stock qty'] || 0),
+                            minStockLevel: parseInt(row.minstocklevel || row['min stock level'] || 10),
+                            barcode: finalBarcode,
+                            imageUrl: (row.imageurl || row['image url'] || '').trim(),
                             manufacturer: (row.manufacturer || '').trim(),
                             warranty: (row.warranty || '').trim(),
                             isActive: row.isactive !== 'false',
@@ -164,7 +173,7 @@ const importProductsCsv = async (req, res, next) => {
 
         res.status(201).json({
             success: true,
-            message: `Successfully imported ${insertedCount} products`,
+            message: `Successfully imported ${insertedCount} products. Missing barcodes were auto-generated.`,
             imported: insertedCount,
             errors: errors.length > 0 ? errors : undefined,
             totalRows: rowNumber
@@ -185,22 +194,23 @@ const downloadCsvTemplate = async (req, res) => {
     const fields = [
         'name', 'variant', 'category', 'brand', 'purchasePrice',
         'sellingPrice', 'gstPercent', 'stockQty', 'minStockLevel',
-        'barcode', 'manufacturer', 'warranty'
+        'barcode', 'imageUrl', 'manufacturer', 'warranty'
     ];
 
     const sampleData = [{
         name: 'Sample Product',
         variant: '500ml',
         category: 'Beverages',
-        brand: 'SampleBrand',
+        brand: 'CompanyBrand',
         purchasePrice: 40,
         sellingPrice: 50,
         gstPercent: 18,
         stockQty: 100,
         minStockLevel: 10,
-        barcode: '1234567890123',
-        manufacturer: 'Sample Mfg',
-        warranty: '6 months'
+        barcode: '', // Leave blank to auto-generate
+        imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200',
+        manufacturer: 'Sample Factory',
+        warranty: '1 Year'
     }];
 
     const json2csvParser = new Json2CsvParser({ fields });

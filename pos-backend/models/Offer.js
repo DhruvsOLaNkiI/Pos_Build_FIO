@@ -23,7 +23,7 @@ const offerSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['percentage', 'flat', 'buy_x_get_y', 'free_item'],
+        enum: ['percentage', 'flat', 'buy_x_get_y', 'free_item', 'wholesale'],
         required: true
     },
     // For percentage: discount value is %, for flat: discount value is ₹
@@ -61,6 +61,9 @@ const offerSchema = new mongoose.Schema({
         default: 'all'
     },
     applicableCategory: { type: String, default: null },
+    applicableProduct: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
+    minQuantity: { type: Number, default: 0 }, // For bulk/tiered purchases
+    wholesalePrice: { type: Number, default: null }, // Dedicated wholesale selling price
     validFrom: { type: Date, default: null },
     validTo: { type: Date, default: null },
     usageLimit: { type: Number, default: null }, // max total redemptions

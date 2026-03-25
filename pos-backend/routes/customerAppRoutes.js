@@ -421,7 +421,7 @@ router.get('/offers', async (req, res, next) => {
                 { $or: [{ validFrom: null }, { validFrom: { $lte: now } }] },
                 { $or: [{ validTo: null }, { validTo: { $gte: now } }] }
             ]
-        }).select('-__v -createdAt -updatedAt -storeId');
+        }).populate('applicableProduct', 'name variant imageUrl').select('-__v -createdAt -updatedAt -storeId');
 
         res.status(200).json({ success: true, count: offers.length, data: offers });
     } catch (error) {

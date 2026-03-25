@@ -409,7 +409,7 @@ const Home = () => {
                         onMoreClick={() => setView('all-products')}
                     />
 
-                    <GopuffShopCategoriesGrid />
+                    <GopuffShopCategoriesGrid onCategoryClick={(cat) => { setFilters({ ...filters, category: cat }); setView('all-products'); }} />
 
                     {/* Dynamic Category Carousels */}
                     {Object.entries(categoryGroups).map(([category, catProducts]) => {
@@ -436,7 +436,7 @@ const Home = () => {
                                 title={`${category.toUpperCase()}.`}
                                 products={productsWithOffers.slice(0, 15)}
                                 totalItems={catProducts.length}
-                                onMoreClick={() => setView('all-products')}
+                                onMoreClick={() => { setFilters({ ...filters, category }); setView('all-products'); }}
                             />
                         );
                     })}
@@ -470,7 +470,7 @@ const Home = () => {
                         onMoreClick={() => setView('all-products')}
                     />
 
-                    <GopuffShopCategoriesGrid />
+                    <GopuffShopCategoriesGrid onCategoryClick={(cat) => { setFilters({ ...filters, category: cat }); setView('all-products'); }} />
 
                     <GopuffProductCarousel
                         title="PRICE DROPS."
@@ -489,7 +489,7 @@ const Home = () => {
                                 title={`${category.toUpperCase()}.`}
                                 products={catProducts.slice(0, 10)}
                                 totalItems={catProducts.length}
-                                onMoreClick={() => setView('all-products')}
+                                onMoreClick={() => { setFilters({ ...filters, category }); setView('all-products'); }}
                             />
                         ))}
                 </>

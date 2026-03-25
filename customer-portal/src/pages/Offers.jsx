@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useCustomerActivityTracking } from '../hooks/useCustomerActivityTracking';
-import { Gift, Zap, Copy, CheckCircle2 } from 'lucide-react';
+import { Gift, Zap, Copy, CheckCircle2, Blocks } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Offers = () => {
@@ -57,57 +57,104 @@ const Offers = () => {
                             No active offers available right now.
                         </motion.div>
                     ) : (
-                        offers.map((offer, index) => (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                key={offer._id}
-                                className="bg-white rounded-3xl p-5 shadow-sm border border-border/50 relative overflow-hidden"
-                            >
-                                {/* Decorative badge */}
-                                {offer.autoApply && (
-                                    <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl flex items-center gap-1 uppercase tracking-wider">
-                                        <Zap className="w-3 h-3 fill-current" /> Auto-Apply
-                                    </div>
-                                )}
-
-                                <div className="pr-12">
-                                    <h3 className="font-bold text-lg leading-tight text-foreground">
-                                        {offer.name}
-                                    </h3>
-                                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                        {offer.description || 'Valid on your next purchase.'}
-                                    </p>
-                                </div>
-
-                                <div className="mt-5 pt-4 border-t border-dashed border-border flex items-center justify-between">
-                                    <div>
-                                        <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">
-                                            {offer.autoApply ? 'No Code Needed' : 'Use Promo Code'}
+                        offers.map((offer, index) => {
+                            // Render distinct UI for wholesale tiers
+                            if (offer.type === 'wholesale') {
+                                return (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.1 }}
+                                        key={offer._id}
+                                        className="bg-gradient-to-br from-indigo-50 to-white rounded-3xl p-5 shadow-sm border border-indigo-100 relative overflow-hidden"
+                                    >
+                                        <div className="absolute top-0 right-0 bg-indigo-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl flex items-center gap-1 uppercase tracking-wider">
+                                            <Blocks className="w-3 h-3 fill-current" /> Bulk Deal
                                         </div>
-                                        {!offer.autoApply && (
-                                            <div className="font-mono font-bold text-primary tracking-widest text-lg">
-                                                {offer.couponCode}
+
+                                        <div className="pr-20">
+                                            <h3 className="font-bold text-lg leading-tight text-indigo-900">
+                                                {offer.applicableProduct?.name || 'Special Item'} {offer.applicableProduct?.variant ? `(${offer.applicableProduct.variant})` : ''}
+                                            </h3>
+                                            <p className="text-sm font-medium text-indigo-600/80 mt-1">
+                                                Buy {offer.minQuantity} or more, get them for ₹{offer.wholesalePrice} each!
+                                            </p>
+                                        </div>
+
+                                        <div className="mt-4 pt-4 border-t border-dashed border-indigo-200 flex items-center justify-between">
+                                            <div>
+                                                <div className="text-xs font-bold text-indigo-500 uppercase tracking-widest">
+                                                    Applied Automatically
+                                                </div>
                                             </div>
+                                            <div className="text-right">
+                                                <span className="text-2xl flex items-center gap-1 font-black text-indigo-600">
+                                                    <span className="text-lg">₹</span>{offer.wholesalePrice}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                );
+                            }
+
+                            // Normal offer rendering
+                            return (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.1 }}
+                                    key={offer._id}
+                                    className="bg-white rounded-3xl p-5 shadow-sm border border-border/50 relative overflow-hidden"
+                                >
+                                    {/* Decorative badge */}
+                                    {offer.isAutoApply && (
+                                        <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl flex items-center gap-1 uppercase tracking-wider">
+                                            <Zap className="w-3 h-3 fill-current" /> Auto-Apply
+                                        </div>
+                                    )}
+
+                                    <div className="pr-12">
+                                        <h3 className="font-bold text-lg leading-tight text-foreground">
+                                            {offer.name}
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                                            {offer.description || 'Valid on your next purchase.'}
+                                        </p>
+                                        {offer.minPurchaseAmount > 0 && (
+                                            <p className="text-xs font-semibold text-primary mt-1">
+                                                Min. Order: ₹{offer.minPurchaseAmount}
+                                            </p>
                                         )}
                                     </div>
 
-                                    {!offer.autoApply && (
-                                        <button
-                                            onClick={() => handleCopy(offer.couponCode, offer._id)}
-                                            className={`p-3 rounded-full transition-colors ${copiedId === offer._id ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
-                                        >
-                                            {copiedId === offer._id ? (
-                                                <CheckCircle2 className="w-5 h-5" />
-                                            ) : (
-                                                <Copy className="w-5 h-5" />
+                                    <div className="mt-5 pt-4 border-t border-dashed border-border flex items-center justify-between">
+                                        <div>
+                                            <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">
+                                                {offer.isAutoApply ? 'No Code Needed' : 'Use Promo Code'}
+                                            </div>
+                                            {!offer.isAutoApply && (
+                                                <div className="font-mono font-bold text-primary tracking-widest text-lg">
+                                                    {offer.couponCode}
+                                                </div>
                                             )}
-                                        </button>
-                                    )}
-                                </div>
-                            </motion.div>
-                        ))
+                                        </div>
+
+                                        {!offer.isAutoApply && (
+                                            <button
+                                                onClick={() => handleCopy(offer.couponCode, offer._id)}
+                                                className={`p-3 rounded-full transition-colors ${copiedId === offer._id ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
+                                            >
+                                                {copiedId === offer._id ? (
+                                                    <CheckCircle2 className="w-5 h-5" />
+                                                ) : (
+                                                    <Copy className="w-5 h-5" />
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            );
+                        })
                     )}
                 </AnimatePresence>
             </div>
