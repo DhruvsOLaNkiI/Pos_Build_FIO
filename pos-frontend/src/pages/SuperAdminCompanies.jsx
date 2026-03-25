@@ -19,7 +19,9 @@ import {
     Search,
     ArrowUpDown,
     Plus,
+    LayoutDashboard,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
@@ -82,6 +84,10 @@ const SuperAdminCompanies = () => {
         plan: 'trial',
     });
 
+    // Manage UI State
+    const [updatingUI, setUpdatingUI] = useState(false);
+    const navigate = useNavigate();
+
     useEffect(() => {
         const fetchCompanies = async () => {
             try {
@@ -141,6 +147,10 @@ const SuperAdminCompanies = () => {
         } finally {
             setCreating(false);
         }
+    };
+
+    const handleOpenManageUI = async (company) => {
+        navigate(`/super-admin/companies/${company._id}/portal-design`, { state: { companyName: company.name } });
     };
 
     const totals = useMemo(() => {
@@ -481,6 +491,15 @@ const SuperAdminCompanies = () => {
                                                     variant="ghost"
                                                     size="icon"
                                                     className="h-7 w-7"
+                                                    onClick={() => handleOpenManageUI(company)}
+                                                    title="Manage Portal UI"
+                                                >
+                                                    <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7"
                                                 >
                                                     <ArrowUpDown className="w-3.5 h-3.5" />
                                                 </Button>
@@ -509,6 +528,8 @@ const SuperAdminCompanies = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Manage UI Dialog Removed */}
         </div>
     );
 };

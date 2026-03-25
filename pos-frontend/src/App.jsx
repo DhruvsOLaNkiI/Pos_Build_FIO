@@ -30,6 +30,7 @@ import SuperAdminApiMonitoring from '@/pages/SuperAdminApiMonitoring';
 import UserActivityAnalytics from '@/pages/UserActivityAnalytics';
 import OnlineOrders from '@/pages/OnlineOrders';
 import ReturnExchange from '@/pages/ReturnExchange';
+import GlobalPortalDesign from '@/pages/GlobalPortalDesign';
 
 function App() {
     const { isAuthenticated, loading, user } = useAuth();
@@ -109,6 +110,10 @@ function App() {
                 <Route
                     path="/super-admin/companies"
                     element={isSuperAdmin ? <SuperAdminCompanies /> : <Navigate to="/dashboard" />}
+                />
+                <Route
+                    path="/super-admin/portal-design"
+                    element={isSuperAdmin ? <GlobalPortalDesign /> : <Navigate to="/dashboard" />}
                 />
                 <Route
                     path="/super-admin/api-monitoring"

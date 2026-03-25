@@ -29,7 +29,8 @@ import {
     Sparkles,
     Globe,
     Activity,
-    RefreshCcw
+    RefreshCcw,
+    LayoutTemplate
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/useToast';
@@ -75,6 +76,7 @@ const navItems = [
 const superAdminNavItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/super-admin/dashboard', roles: ['super-admin'], category: 'Super Admin' },
     { icon: Globe, label: 'Companies', path: '/super-admin/companies', roles: ['super-admin'], category: 'Super Admin' },
+    { icon: LayoutTemplate, label: 'Portal Design', path: '/super-admin/portal-design', roles: ['super-admin'], category: 'Super Admin' },
     { icon: Activity, label: 'API Monitoring', path: '/super-admin/api-monitoring', roles: ['super-admin'], category: 'Super Admin' },
     { icon: Users, label: 'User Activity', path: '/super-admin/user-activity', roles: ['super-admin'], category: 'Super Admin' },
 ];
@@ -315,7 +317,7 @@ const Sidebar = () => {
                         </div>
                     );
                 })()
-            )})}
+            )}
 
             {/* Nav Items */}
             <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-6">
