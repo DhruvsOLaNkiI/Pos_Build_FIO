@@ -53,7 +53,6 @@ const Products = () => {
         unit: '',
         purchasePrice: '',
         sellingPrice: '',
-        gstPercent: '0',
         stockQty: '0',
         minStockLevel: '10',
         barcode: '',
@@ -109,7 +108,6 @@ const Products = () => {
                 unit: product.unit?._id || product.unit || '',
                 purchasePrice: product.purchasePrice.toString(),
                 sellingPrice: product.sellingPrice.toString(),
-                gstPercent: product.gstPercent.toString(),
                 stockQty: product.stockQty.toString(),
                 warehouseStock: totalWarehouseStock.toString(),
                 transferQty: '',
@@ -128,7 +126,6 @@ const Products = () => {
                 unit: '',
                 purchasePrice: '',
                 sellingPrice: '',
-                gstPercent: '0',
                 stockQty: '0',
                 warehouseStock: '0',
                 transferQty: '',
@@ -149,7 +146,6 @@ const Products = () => {
             unit: product.unit?._id || product.unit || '',
             purchasePrice: product.purchasePrice.toString(),
             sellingPrice: product.sellingPrice.toString(),
-            gstPercent: product.gstPercent ? product.gstPercent.toString() : '0',
             stockQty: '0',
             warehouseStock: '0',
             transferQty: '',
@@ -168,7 +164,6 @@ const Products = () => {
                 ...formData,
                 purchasePrice: parseFloat(formData.purchasePrice),
                 sellingPrice: parseFloat(formData.sellingPrice),
-                gstPercent: parseFloat(formData.gstPercent),
                 stockQty: parseInt(formData.stockQty) || 0,
                 minStockLevel: parseInt(formData.minStockLevel) || 10,
             };
@@ -668,15 +663,6 @@ const Products = () => {
                                     required
                                     value={formData.sellingPrice}
                                     onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="gstPercent">GST %</Label>
-                                <Input
-                                    id="gstPercent"
-                                    type="number"
-                                    value={formData.gstPercent}
-                                    onChange={(e) => setFormData({ ...formData, gstPercent: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-2">

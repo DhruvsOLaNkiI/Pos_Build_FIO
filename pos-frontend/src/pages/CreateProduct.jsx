@@ -33,7 +33,6 @@ const CreateProduct = () => {
         category: '',
         brand: '',
         unit: '',
-        gstPercent: '0',
         warranty: '',
         manufacturer: '',
         manufacturedDate: '',
@@ -345,10 +344,6 @@ const CreateProduct = () => {
                                             <option key={u._id} value={u._id}>{u.name} ({u.shortName})</option>
                                         ))}
                                     </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>GST %</Label>
-                                    <Input type="number" value={sharedData.gstPercent} onChange={(e) => setSharedData({ ...sharedData, gstPercent: e.target.value })} />
                                 </div>
                             </div>
                         </div>

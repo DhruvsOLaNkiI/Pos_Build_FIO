@@ -69,7 +69,6 @@ const ProductTable = ({ products, onEdit, onDelete, onAddVariant, selectedIds = 
                         <TableHead className="text-right">Purchase Price</TableHead>
                         <TableHead className="text-right">Selling Price</TableHead>
                         <TableHead className="text-center">Stock</TableHead>
-                        <TableHead className="text-center">GST %</TableHead>
                         {!readOnly && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                 </TableHeader>
@@ -160,7 +159,6 @@ const ProductTable = ({ products, onEdit, onDelete, onAddVariant, selectedIds = 
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-center">{product.gstPercent}%</TableCell>
                                         {!readOnly && (
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
@@ -234,7 +232,6 @@ const ProductTable = ({ products, onEdit, onDelete, onAddVariant, selectedIds = 
                                         <TableCell className="text-right text-muted-foreground text-xs italic">Multiple Fields</TableCell>
                                         <TableCell className="text-right text-muted-foreground text-xs italic">Multiple Fields</TableCell>
                                         <TableCell className="text-center font-bold">{group.totalStock}</TableCell>
-                                        <TableCell className="text-center text-muted-foreground">—</TableCell>
                                         {!readOnly && (
                                             <TableCell className="text-right">
                                             {onAddVariant && (
@@ -301,7 +298,6 @@ const ProductTable = ({ products, onEdit, onDelete, onAddVariant, selectedIds = 
                                                     )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-center">{product.gstPercent}%</TableCell>
                                             {!readOnly && (
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">

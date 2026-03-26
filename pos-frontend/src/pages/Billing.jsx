@@ -47,6 +47,7 @@ const Billing = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm, 300); // Wait 300ms
     const [cart, setCart] = useState([]);
+    const [cartGstPercent, setCartGstPercent] = useState(0); // Cart-level GST
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [discount, setDiscount] = useState(0);
     const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -163,10 +164,7 @@ const Billing = () => {
     };
 
     const calculateTax = () => {
-        return cart.reduce((acc, item) => {
-            const itemTotal = item.sellingPrice * item.quantity;
-            return acc + (itemTotal * ((item.gstPercent || 0) / 100));
-        }, 0);
+        return calculateSubtotal() * (cartGstPercent / 100);
     };
 
     const subtotal = calculateSubtotal();
@@ -217,6 +215,7 @@ const Billing = () => {
                 })),
                 paymentMethods: [{ method: paymentMethod, amount: total }],
                 discount: discount,
+                cartGstPercent: cartGstPercent,
                 customerName,
                 customerPhone
             };
@@ -261,6 +260,7 @@ const Billing = () => {
         setIsInvoiceOpen(false);
         setLastSale(null);
         setCart([]);
+        setCartGstPercent(0);
         setDiscount(0);
         setSelectedOffer(null);
         setCustomerName('');
@@ -281,6 +281,7 @@ const Billing = () => {
                 subtotal,
                 discount,
                 tax,
+                cartGstPercent,
                 total,
                 customer: null, // Note: We could attach a selected customer here if we implemented complex customer selection
                 note: holdNote
@@ -291,6 +292,7 @@ const Billing = () => {
 
             // Clear current screen for next customer
             setCart([]);
+            setCartGstPercent(0);
             setDiscount(0);
             setCustomerName('');
             setCustomerPhone('');
@@ -315,6 +317,7 @@ const Billing = () => {
         try {
             setProcessing(true);
             setCart(order.cart);
+            setCartGstPercent(order.cartGstPercent || 0);
             setDiscount(order.discount || 0);
 
             // Optional: If you had customer info in the held order, restore it
@@ -791,8 +794,22 @@ const Billing = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', opacity: 0.6, marginBottom: '4px' }}>
                             <span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', opacity: 0.6, marginBottom: '4px' }}>
-                            <span>GST</span><span>₹{tax.toFixed(2)}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', opacity: 0.6, marginBottom: '4px', alignItems: 'center' }}>
+                            <span>GST</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <select
+                                    value={cartGstPercent}
+                                    onChange={(e) => setCartGstPercent(Number(e.target.value))}
+                                    style={{ padding: '2px 4px', fontSize: '11px', borderRadius: '4px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--background))' }}
+                                >
+                                    <option value="0">0%</option>
+                                    <option value="5">5%</option>
+                                    <option value="12">12%</option>
+                                    <option value="18">18%</option>
+                                    <option value="28">28%</option>
+                                </select>
+                                <span>₹{tax.toFixed(2)}</span>
+                            </div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', opacity: 0.6, marginBottom: '8px', alignItems: 'center' }}>
                             <span>Discount / Offer</span>
