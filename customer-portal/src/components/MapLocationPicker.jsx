@@ -23,11 +23,13 @@ const MapLocationPicker = ({ latitude, longitude, onLocationChange, label = 'Sel
             const data = await resp.json();
             if (data.display_name) {
                 setAddress(data.display_name);
+                // Also pass address back to parent via callback
+                if (onLocationChange) onLocationChange(lat, lng, data.display_name);
             }
         } catch (err) {
             console.error('Reverse geocoding failed', err);
         }
-    }, []);
+    }, [onLocationChange]);
 
     // Search for a place by name
     const searchPlace = async () => {
@@ -44,7 +46,7 @@ const MapLocationPicker = ({ latitude, longitude, onLocationChange, label = 'Sel
                 const newLng = parseFloat(lon);
                 updateMapPosition(newLat, newLng);
                 setAddress(display_name);
-                if (onLocationChange) onLocationChange(newLat, newLng);
+                if (onLocationChange) onLocationChange(newLat, newLng, display_name);
             }
         } catch (err) {
             console.error('Search failed', err);
@@ -63,7 +65,7 @@ const MapLocationPicker = ({ latitude, longitude, onLocationChange, label = 'Sel
                 const lng = pos.coords.longitude;
                 updateMapPosition(lat, lng);
                 reverseGeocode(lat, lng);
-                if (onLocationChange) onLocationChange(lat, lng);
+                if (onLocationChange) onLocationChange(lat, lng, null); // address comes async via reverseGeocode
                 setLoading(false);
             },
             () => {

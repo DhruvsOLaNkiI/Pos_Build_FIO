@@ -167,7 +167,7 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
                     >
                         <MapPin className="h-3 w-3 text-blue-600 shrink-0" />
                         <span className="flex items-center gap-1 truncate">
-                            <span className="truncate">{currentPincode}</span>
+                            <span className="truncate font-black">{currentPincode}</span>
                             {currentStoreName && (
                                 <span className="text-gray-400 font-bold shrink-0">• {currentStoreName.split(' · ')[0]}</span>
                             )}

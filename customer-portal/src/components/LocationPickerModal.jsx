@@ -3,23 +3,22 @@ import { MapPin, X, Store as StoreIcon, Loader2, Check } from 'lucide-react';
 import API from '../services/api';
 import MapLocationPicker from './MapLocationPicker';
 
-// Helper to extract CITY NAME from full address
+// Helper to extract AREA/LOCALITY NAME from full address
+// e.g. "Shop 4, Andheri West, Mumbai, Maharashtra 400058" → "Andheri West"
 const extractCityName = (address) => {
     if (!address) return '';
-    const parts = address.split(/[,\-·]/).map(p => p.trim()).filter(p => p);
-    // City is typically the last or second-to-last part (before state/pincode)
-    // Work backwards to find city (skip parts with numbers/pincodes)
-    for (let i = parts.length - 1; i >= 0; i--) {
+    const parts = address.split(/[,]/).map(p => p.trim()).filter(p => p);
+    // Find first part that:
+    // 1. Has no digits (not a shop/flat number or pincode)
+    // 2. Is reasonably short (area names, not full street descriptions)
+    // This picks the locality/area e.g. "Andheri West" before the city
+    for (let i = 0; i < parts.length; i++) {
         const part = parts[i];
-        // Skip if it contains numbers (likely pincode)
-        if (/\d/.test(part)) continue;
-        // Skip if it's a state name (usually last part)
-        if (i === parts.length - 1 && part.length > 3) continue;
-        // Return this as city name
+        if (/\d/.test(part)) continue; // skip numbers/pincodes
+        if (part.length < 3) continue;  // skip too short
         return part;
     }
-    // Fallback: return second-to-last or last part
-    return parts[parts.length - 2] || parts[parts.length - 1] || address;
+    return parts[0] || address;
 };
 
 const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
@@ -31,6 +30,7 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
     const [useMap, setUseMap] = useState(false);
     const [gpsLat, setGpsLat] = useState(null);
     const [gpsLng, setGpsLng] = useState(null);
+    const [gpsAddress, setGpsAddress] = useState(''); // resolved address from map
     const [radius, setRadius] = useState(100); // km
 
     useEffect(() => {
@@ -81,9 +81,10 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
         fetchNearbyStores(`pincode=${pincode}&radius=${radius}`);
     };
 
-    const handleMapLocationChange = (lat, lng) => {
+    const handleMapLocationChange = (lat, lng, resolvedAddress) => {
         setGpsLat(lat);
         setGpsLng(lng);
+        if (resolvedAddress) setGpsAddress(resolvedAddress);
     };
 
     const handleSearchByLocation = () => {
@@ -96,8 +97,9 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
     const handleConfirmStore = (store) => {
         localStorage.setItem('customer_store_name', store.name);
         localStorage.setItem('customer_store_id', store._id);
-        // Save only CITY NAME (not full address)
-        const cityName = extractCityName(store.address) || store.name || pincode;
+        // Save AREA NAME: use GPS address area if available, otherwise store address
+        const areaFromGps = gpsAddress ? extractCityName(gpsAddress) : null;
+        const cityName = areaFromGps || extractCityName(store.address) || store.name || pincode;
         localStorage.setItem('customer_store_address', store.address || '');
         localStorage.setItem('customer_location_display', cityName);
         if (gpsLat && gpsLng) {
@@ -111,9 +113,10 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
     const handleConfirmAll = () => {
         if (stores.length > 0) {
             localStorage.setItem('customer_store_name', stores.map(s => s.name).join(' · '));
-            // Use first store's CITY name
+            // Use GPS address area if available, otherwise use first store address
             const firstStore = stores[0];
-            const cityName = extractCityName(firstStore?.address) || firstStore?.name || pincode;
+            const areaFromGps = gpsAddress ? extractCityName(gpsAddress) : null;
+            const cityName = areaFromGps || extractCityName(firstStore?.address) || firstStore?.name || pincode;
             localStorage.setItem('customer_store_address', firstStore?.address || '');
             localStorage.setItem('customer_location_display', cityName);
         }
