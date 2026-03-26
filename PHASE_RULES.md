@@ -41,6 +41,18 @@ This document is the **single source of truth** for building the MERN-stack Poin
     - Frontend: Show user-friendly toasts/alerts on error.
 
 ---
+```env
+# Database Connection (Replace with your own if using MongoDB Atlas)
+MONGO_URI=mongodb+srv://user123:user123@cluster0.ofi5bhc.mongodb.net/pos_system?retryWrites=true&w=majority&appName=Cluster0
+
+# Security
+JWT_SECRET=your_super_secret_key_here
+JWT_REFRESH_SECRET=your_refresh_secret_here
+
+# Server Configuration
+PORT=5001
+NODE_ENV=development
+```
 
 ## 📅 Implementation Phases
 
