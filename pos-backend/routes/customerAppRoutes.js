@@ -86,23 +86,99 @@ router.get('/companies/:id', async (req, res, next) => {
     }
 });
 
+// @desc    Customer Signup
+// @route   POST /api/customer-app/auth/signup
+// @access  Public
+router.post('/auth/signup', async (req, res, next) => {
+    try {
+        const { name, mobile, email, password, companyId, preferredStoreId } = req.body;
+
+        if (!name || !mobile || !email || !password || !companyId) {
+            res.status(400);
+            return next(new Error('Please provide all required fields (name, mobile, email, password, companyId)'));
+        }
+
+        // Check if user already exists
+        const userExists = await Customer.findOne({ $or: [{ email }, { mobile }] });
+        if (userExists) {
+            res.status(400);
+            return next(new Error('A customer with this email or mobile number already exists'));
+        }
+
+        let customerId;
+        while (true) {
+            // Generate a random 6-digit number
+            customerId = Math.floor(100000 + Math.random() * 900000).toString();
+            const exists = await Customer.findOne({ customerId });
+            if (!exists) break;
+        }
+
+        const customer = await Customer.create({
+            name,
+            mobile,
+            email,
+            password,
+            companyId,
+            preferredStoreId,
+            customerId
+        });
+
+        const token = jwt.sign({ id: customer._id, role: 'customer' }, process.env.JWT_SECRET, { expiresIn: '30d' });
+
+        res.status(201).json({
+            success: true,
+            token,
+            customer: {
+                _id: customer._id,
+                name: customer.name,
+                email: customer.email,
+                mobile: customer.mobile,
+                customerId: customer.customerId,
+                loyaltyPoints: customer.loyaltyPoints,
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // @desc    Customer Login
 // @route   POST /api/customer-app/auth/login
 // @access  Public
 router.post('/auth/login', async (req, res, next) => {
     try {
-        const { customerId } = req.body;
+        const { email, password, customerId } = req.body;
 
-        if (!customerId) {
+        let customer;
+
+        if (email && password) {
+            // New login flow
+            customer = await Customer.findOne({ email }).select('+password');
+            if (!customer) {
+                res.status(401);
+                return next(new Error('Invalid email or password'));
+            }
+
+            const isMatch = await customer.matchPassword(password);
+            if (!isMatch) {
+                res.status(401);
+                return next(new Error('Invalid email or password'));
+            }
+        } else if (customerId) {
+            // Legacy login flow (for existing POS-created users if they want to use ID)
+            customer = await Customer.findOne({ customerId, isActive: true });
+            if (!customer) {
+                res.status(401);
+                return next(new Error('Invalid Customer ID or account deactivated'));
+            }
+        } else {
             res.status(400);
-            return next(new Error('Please provide your Customer ID'));
+            return next(new Error('Please provide email and password, or Customer ID'));
         }
 
-        const customer = await Customer.findOne({ customerId, isActive: true });
-
-        if (!customer) {
+        if (!customer.isActive) {
             res.status(401);
-            return next(new Error('Invalid Customer ID or account deactivated'));
+            return next(new Error('Account deactivated'));
         }
 
         // Create JWT for customer session
@@ -118,11 +194,119 @@ router.post('/auth/login', async (req, res, next) => {
             customer: {
                 _id: customer._id,
                 name: customer.name,
+                email: customer.email,
                 mobile: customer.mobile,
                 customerId: customer.customerId,
                 loyaltyPoints: customer.loyaltyPoints,
             }
         });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Forgot Password
+// @route   POST /api/customer-app/auth/forgot-password
+// @access  Public
+router.post('/auth/forgot-password', async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        const customer = await Customer.findOne({ email });
+
+        if (!customer) {
+            res.status(404);
+            return next(new Error('There is no user with that email'));
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        customer.otp = otp;
+        customer.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes from now
+        await customer.save({ validateBeforeSave: false });
+
+        // Logic to send email
+        const sendEmail = require('../utils/sendEmail');
+        try {
+            const message = `Your password reset OTP is ${otp}\n\nThis code will expire in 10 minutes.`;
+            // Log code for demo purposes because we might not have real SMTP
+            console.log(`[OTP GENERATED for ${email}]: ${otp}`);
+            
+            // Allow sending if SMTP configured:
+            if (process.env.SMTP_HOST) {
+                await sendEmail({
+                    email: customer.email,
+                    subject: 'Password Reset OTP',
+                    message
+                });
+            }
+
+            res.status(200).json({ success: true, message: 'OTP sent to email (check terminal if no SMTP)' });
+        } catch (err) {
+            customer.otp = undefined;
+            customer.otpExpire = undefined;
+            await customer.save({ validateBeforeSave: false });
+            return next(new Error('Email could not be sent'));
+        }
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Verify OTP
+// @route   POST /api/customer-app/auth/verify-otp
+// @access  Public
+router.post('/auth/verify-otp', async (req, res, next) => {
+    try {
+        const { email, otp } = req.body;
+        
+        const customer = await Customer.findOne({
+            email,
+            otp,
+            otpExpire: { $gt: Date.now() }
+        });
+
+        if (!customer) {
+            res.status(400);
+            return next(new Error('Invalid or expired OTP'));
+        }
+
+        res.status(200).json({ success: true, message: 'OTP Verified' });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Reset Password with OTP
+// @route   POST /api/customer-app/auth/reset-password
+// @access  Public
+router.post('/auth/reset-password', async (req, res, next) => {
+    try {
+        const { email, otp, password } = req.body;
+        
+        if (!password || password.length < 6) {
+             res.status(400);
+             return next(new Error('Password must be at least 6 characters'));
+        }
+
+        const customer = await Customer.findOne({
+            email,
+            otp,
+            otpExpire: { $gt: Date.now() }
+        });
+
+        if (!customer) {
+            res.status(400);
+            return next(new Error('Invalid or expired OTP'));
+        }
+
+        // Set new password
+        customer.password = password;
+        customer.otp = undefined;
+        customer.otpExpire = undefined;
+        await customer.save();
+
+        res.status(200).json({ success: true, message: 'Password reset successful' });
     } catch (error) {
         next(error);
     }

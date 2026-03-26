@@ -21,7 +21,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Edit2, Trash2, Phone, Mail, MapPin, History, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Phone, Mail, MapPin, History, ChevronDown, ChevronUp, Key } from 'lucide-react';
 
 const Customers = () => {
     const { user } = useAuth();
@@ -40,6 +40,11 @@ const Customers = () => {
         email: '',
         address: '',
     });
+
+    // Password Set state
+    const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [passwordCustomer, setPasswordCustomer] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
 
     // History state
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -140,6 +145,27 @@ const Customers = () => {
             toast({ title: 'Error', description: 'Failed to fetch history', variant: 'destructive' });
         } finally {
             setHistoryLoading(false);
+        }
+    };
+
+    const handleOpenPasswordModal = (customer) => {
+        setPasswordCustomer(customer);
+        setNewPassword('');
+        setIsPasswordModalOpen(true);
+    };
+
+    const handleSetPassword = async (e) => {
+        e.preventDefault();
+        if (newPassword.length < 6) {
+            toast({ title: 'Error', description: 'Password must be at least 6 characters', variant: 'destructive' });
+            return;
+        }
+        try {
+            await API.post(`/customers/${passwordCustomer._id}/set-password`, { password: newPassword });
+            toast({ title: 'Success', description: 'Password set successfully for customer' });
+            setIsPasswordModalOpen(false);
+        } catch (error) {
+            toast({ title: 'Error', description: error.response?.data?.message || 'Failed to set password', variant: 'destructive' });
         }
     };
 
@@ -244,6 +270,9 @@ const Customers = () => {
                                             <Button variant="ghost" size="icon" title="View Purchase History" onClick={() => fetchHistory(customer)}>
                                                 <History className="w-4 h-4 text-green-500" />
                                             </Button>
+                                            <Button variant="ghost" size="icon" title="Set Password" onClick={() => handleOpenPasswordModal(customer)}>
+                                                <Key className="w-4 h-4 text-purple-500" />
+                                            </Button>
                                             <Button variant="ghost" size="icon" onClick={() => handleOpenModal(customer)}>
                                                 <Edit2 className="w-4 h-4 text-blue-500" />
                                             </Button>
@@ -303,6 +332,33 @@ const Customers = () => {
                         <DialogFooter className="pt-4">
                             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                             <Button type="submit">{editingCustomer ? 'Update' : 'Add Customer'}</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Set Password Dialog */}
+            <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Set Password — {passwordCustomer?.name}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSetPassword} className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="newPassword">New Password (Min 6 characters)</Label>
+                            <Input
+                                id="newPassword"
+                                type="text"
+                                required
+                                minLength={6}
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Enter strong password..."
+                            />
+                        </div>
+                        <DialogFooter className="pt-4">
+                            <Button type="button" variant="outline" onClick={() => setIsPasswordModalOpen(false)}>Cancel</Button>
+                            <Button type="submit">Set Password</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

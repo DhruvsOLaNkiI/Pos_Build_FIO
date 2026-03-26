@@ -4,6 +4,9 @@ import GopuffBanner from './components/GopuffBanner';
 import GopuffHeader from './components/GopuffHeader';
 import Footer from './components/Footer';
 import Login from './pages/Login';
+import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import CompanySelection from './pages/CompanySelection';
 import Home from './pages/Home';
 import Offers from './pages/Offers';
@@ -48,28 +51,31 @@ const AppLayout = () => {
 function App() {
   return (
     <Routes>
-      {/* Public Auth Route */}
+      {/* Public Auth Routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
-      {/* Company Selection (Protected) */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+      {/* Public Main App Routes */}
+      <Route element={<AppLayout />}>
         <Route path="/select-company" element={<CompanySelection />} />
-      </Route>
-
-      {/* Main App Routes (Protected via Customer ID) */}
-      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/" element={<Home />} />
         <Route path="/offers" element={<Offers />} />
-        <Route path="/loyalty" element={<Loyalty />} />
-        <Route path="/profile" element={<Profile />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/product/:id" element={<Product />} />
+      </Route>
+
+      {/* Protected Routes (Require Login) */}
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/loyalty" element={<Loyalty />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

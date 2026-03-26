@@ -32,8 +32,16 @@ export const AuthProvider = ({ children }) => {
         checkStatus();
     }, []);
 
-    const login = async (customerId) => {
-        const { data } = await API.post('/auth/login', { customerId });
+    const login = async (credentials) => {
+        // credentials can be { email, password } or { customerId }
+        const { data } = await API.post('/auth/login', credentials);
+        localStorage.setItem('customerToken', data.token);
+        setCustomer(data.customer);
+        return data.customer;
+    };
+
+    const signup = async (userData) => {
+        const { data } = await API.post('/auth/signup', userData);
         localStorage.setItem('customerToken', data.token);
         setCustomer(data.customer);
         return data.customer;
@@ -44,11 +52,30 @@ export const AuthProvider = ({ children }) => {
         setCustomer(null);
     };
 
+    const forgotPassword = async (email) => {
+        const { data } = await API.post('/auth/forgot-password', { email });
+        return data;
+    };
+
+    const verifyOtp = async (email, otp) => {
+        const { data } = await API.post('/auth/verify-otp', { email, otp });
+        return data;
+    };
+
+    const resetPassword = async (email, otp, password) => {
+        const { data } = await API.post('/auth/reset-password', { email, otp, password });
+        return data;
+    };
+
     const value = {
         customer,
         isAuthenticated: !!customer,
         loading,
         login,
+        signup,
+        forgotPassword,
+        verifyOtp,
+        resetPassword,
         logout,
         refreshProfile: checkStatus
     };

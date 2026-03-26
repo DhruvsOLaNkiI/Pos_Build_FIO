@@ -114,6 +114,32 @@ const getCustomerHistory = async (req, res, next) => {
         next(error);
     }
 };
+// @desc    Set customer password (Admin override)
+// @route   POST /api/customers/:id/set-password
+// @access  Private (Admin/Manager)
+const setCustomerPassword = async (req, res, next) => {
+    try {
+        const { password } = req.body;
+        
+        if (!password || password.length < 6) {
+             res.status(400);
+             return next(new Error('Password must be at least 6 characters'));
+        }
+
+        const customer = await Customer.findOne({ _id: req.params.id, companyId: req.user.companyId });
+        if (!customer) {
+            res.status(404);
+            return next(new Error('Customer not found'));
+        }
+
+        customer.password = password;
+        await customer.save();
+
+        res.status(200).json({ success: true, message: 'Password set successfully for customer' });
+    } catch (error) {
+        next(error);
+    }
+};
 
 module.exports = {
     getCustomers,
@@ -121,5 +147,6 @@ module.exports = {
     createCustomer,
     updateCustomer,
     deleteCustomer,
-    getCustomerHistory
+    getCustomerHistory,
+    setCustomerPassword
 };

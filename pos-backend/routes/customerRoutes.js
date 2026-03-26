@@ -6,7 +6,8 @@ const {
     createCustomer,
     updateCustomer,
     deleteCustomer,
-    getCustomerHistory
+    getCustomerHistory,
+    setCustomerPassword
 } = require('../controllers/customerController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -22,5 +23,6 @@ router.route('/:id')
     .delete(deleteCustomer);
 
 router.get('/:id/history', getCustomerHistory);
+router.post('/:id/set-password', setCustomerPassword);
 
 module.exports = router;
