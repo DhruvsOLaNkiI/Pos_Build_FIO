@@ -46,10 +46,6 @@ const productSchema = new mongoose.Schema(
             type: Number,
             required: [true, 'Please add selling price'],
         },
-        gstPercent: {
-            type: Number,
-            default: 0,
-        },
         barcode: {
             type: String,
             unique: true,

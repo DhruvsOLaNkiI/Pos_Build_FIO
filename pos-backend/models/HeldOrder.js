@@ -26,6 +26,10 @@ const heldOrderSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        cartGstPercent: {
+            type: Number,
+            default: 0,
+        },
         total: {
             type: Number,
             required: true,

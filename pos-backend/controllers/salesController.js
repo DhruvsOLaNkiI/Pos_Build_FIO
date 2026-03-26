@@ -12,7 +12,7 @@ const createSale = async (req, res, next) => {
             return next(new Error('Store context is required to complete a sale'));
         }
 
-        const { items, paymentMethods, customer, discount } = req.body;
+        const { items, paymentMethods, customer, discount, cartGstPercent } = req.body;
 
         if (!items || items.length === 0) {
             res.status(400);
@@ -40,14 +40,14 @@ const createSale = async (req, res, next) => {
             }
 
             const itemTotal = product.sellingPrice * item.quantity;
-            const itemGST = (itemTotal * (product.gstPercent / 100));
+            const itemGST = itemTotal * ((cartGstPercent || 0) / 100);
 
             saleItems.push({
                 product: product._id,
                 name: product.name,
                 quantity: item.quantity,
                 price: product.sellingPrice,
-                gstPercent: product.gstPercent,
+                gstPercent: cartGstPercent || 0,
                 total: itemTotal + itemGST
             });
 

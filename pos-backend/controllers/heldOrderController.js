@@ -5,7 +5,7 @@ const HeldOrder = require('../models/HeldOrder');
 // @access  Private (Cashier/Owner)
 const createHeldOrder = async (req, res, next) => {
     try {
-        const { cart, subtotal, discount, tax, total, customer, note } = req.body;
+        const { cart, subtotal, discount, tax, total, customer, note, cartGstPercent } = req.body;
 
         if (!cart || cart.length === 0) {
             res.status(400);
@@ -24,6 +24,7 @@ const createHeldOrder = async (req, res, next) => {
             subtotal,
             discount,
             tax,
+            cartGstPercent,
             total,
             customer: customer || undefined,
             note,
@@ -68,6 +69,7 @@ const getHeldOrders = async (req, res, next) => {
                     barcode: p.barcode || ''
                 };
             });
+            orderObj.cartGstPercent = order.cartGstPercent;
             return orderObj;
         });
 
