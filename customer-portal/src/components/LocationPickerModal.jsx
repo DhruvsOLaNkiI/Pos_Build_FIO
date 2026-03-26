@@ -3,6 +3,25 @@ import { MapPin, X, Store as StoreIcon, Loader2, Check } from 'lucide-react';
 import API from '../services/api';
 import MapLocationPicker from './MapLocationPicker';
 
+// Helper to extract CITY NAME from full address
+const extractCityName = (address) => {
+    if (!address) return '';
+    const parts = address.split(/[,\-·]/).map(p => p.trim()).filter(p => p);
+    // City is typically the last or second-to-last part (before state/pincode)
+    // Work backwards to find city (skip parts with numbers/pincodes)
+    for (let i = parts.length - 1; i >= 0; i--) {
+        const part = parts[i];
+        // Skip if it contains numbers (likely pincode)
+        if (/\d/.test(part)) continue;
+        // Skip if it's a state name (usually last part)
+        if (i === parts.length - 1 && part.length > 3) continue;
+        // Return this as city name
+        return part;
+    }
+    // Fallback: return second-to-last or last part
+    return parts[parts.length - 2] || parts[parts.length - 1] || address;
+};
+
 const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
     const [pincode, setPincode] = useState('');
     const [error, setError] = useState('');
@@ -57,6 +76,8 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
             return;
         }
         localStorage.setItem('customer_pincode', pincode);
+        // Save pincode as location display for pincode-based search
+        localStorage.setItem('customer_location_display', `Pincode ${pincode}`);
         fetchNearbyStores(`pincode=${pincode}&radius=${radius}`);
     };
 
@@ -75,23 +96,33 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
     const handleConfirmStore = (store) => {
         localStorage.setItem('customer_store_name', store.name);
         localStorage.setItem('customer_store_id', store._id);
+        // Save only CITY NAME (not full address)
+        const cityName = extractCityName(store.address) || store.name || pincode;
+        localStorage.setItem('customer_store_address', store.address || '');
+        localStorage.setItem('customer_location_display', cityName);
         if (gpsLat && gpsLng) {
             localStorage.setItem('customer_lat', gpsLat);
             localStorage.setItem('customer_lng', gpsLng);
         }
-        onLocationSelect(gpsLat ? `${gpsLat.toFixed(4)},${gpsLng.toFixed(4)}` : pincode);
+        onLocationSelect(cityName);
         onClose();
     };
 
     const handleConfirmAll = () => {
         if (stores.length > 0) {
             localStorage.setItem('customer_store_name', stores.map(s => s.name).join(' · '));
+            // Use first store's CITY name
+            const firstStore = stores[0];
+            const cityName = extractCityName(firstStore?.address) || firstStore?.name || pincode;
+            localStorage.setItem('customer_store_address', firstStore?.address || '');
+            localStorage.setItem('customer_location_display', cityName);
         }
         if (gpsLat && gpsLng) {
             localStorage.setItem('customer_lat', gpsLat);
             localStorage.setItem('customer_lng', gpsLng);
         }
-        onLocationSelect(gpsLat ? `${gpsLat.toFixed(4)},${gpsLng.toFixed(4)}` : pincode);
+        const displayLocation = localStorage.getItem('customer_location_display') || pincode;
+        onLocationSelect(displayLocation);
         onClose();
     };
 
@@ -231,24 +262,29 @@ const LocationPickerModal = ({ isOpen, onClose, onLocationSelect }) => {
                                     <button
                                         key={store._id}
                                         onClick={() => handleConfirmStore(store)}
-                                        className="w-full flex items-center gap-3 p-3 bg-gray-50 hover:bg-blue-50 rounded-xl transition-colors text-left group"
+                                        className="w-full flex items-start gap-3 p-3 bg-gray-50 hover:bg-blue-50 rounded-xl transition-colors text-left group"
                                     >
-                                        <div className="bg-blue-100 group-hover:bg-blue-200 rounded-full p-2 transition-colors">
+                                        <div className="bg-blue-100 group-hover:bg-blue-200 rounded-full p-2 transition-colors shrink-0">
                                             <StoreIcon className="w-5 h-5 text-blue-600" />
                                         </div>
-                                        <div className="flex-1">
+                                        <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <p className="font-black text-sm text-gray-900 uppercase">{store.name}</p>
                                                 {store.distance != null && (
                                                     <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-black">{store.distance} km</span>
                                                 )}
                                             </div>
+                                            {store.address && (
+                                                <p className="text-xs text-gray-600 font-bold mt-0.5 truncate">
+                                                    {store.address}
+                                                </p>
+                                            )}
                                             <p className="text-[10px] text-gray-400 font-bold uppercase">
-                                                {store.companyName && <span className="text-blue-500">{store.companyName} · </span>}
-                                                {store.code} {store.address ? `· ${store.address}` : ''}
+                                                {store.companyName && <span className="text-blue-500">{store.companyName}</span>}
+                                                {store.code && <span> · {store.code}</span>}
                                             </p>
                                         </div>
-                                        <Check className="w-4 h-4 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <Check className="w-4 h-4 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                                     </button>
                                 ))}
                             </div>

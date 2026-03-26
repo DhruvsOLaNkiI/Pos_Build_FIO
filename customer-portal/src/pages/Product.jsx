@@ -5,7 +5,7 @@ import { useCustomerActivityTracking } from '../hooks/useCustomerActivityTrackin
 import API from '../services/api';
 import {
     Loader2, ArrowLeft, Plus, Minus, Store as StoreIcon,
-    MapPin, Tag, Package, Building2, Barcode, Shield, Calendar, ChevronRight,
+    MapPin, Tag, Package, Building2, Shield, Calendar, ChevronRight,
     AlertTriangle, CheckCircle, X, ShoppingCart
 } from 'lucide-react';
 
@@ -112,7 +112,6 @@ const Product = () => {
     }
 
     const price = discountedPrice;
-    const gstAmount = (price * (product?.gstPercent || 0) / 100).toFixed(2);
     const stockQty = product?.stockQty ?? 0;
 
     if (loading) {
@@ -226,9 +225,6 @@ const Product = () => {
                             {matchedOffer && savingsAmount > 0 && (
                                 <span className="text-gray-400 text-2xl font-bold line-through">₹{originalPrice.toLocaleString()}</span>
                             )}
-                            {product.gstPercent > 0 && (
-                                <span className="text-xs font-bold text-gray-600">+ ₹{gstAmount} GST ({product.gstPercent}%)</span>
-                            )}
                         </div>
 
                         {/* Stock Status */}
@@ -337,12 +333,6 @@ const Product = () => {
                                         <div><p className="text-[10px] text-gray-500 font-bold uppercase">Warranty</p><p className="font-bold text-gray-900">{product.warranty}</p></div>
                                     </div>
                                 )}
-                                {product.barcode && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Barcode className="w-4 h-4 text-gray-600" />
-                                        <div><p className="text-[10px] text-gray-500 font-bold uppercase">Barcode</p><p className="font-bold text-gray-900">{product.barcode}</p></div>
-                                    </div>
-                                )}
                                 {product.expiryDate && (
                                     <div className="flex items-center gap-2 text-sm">
                                         <Calendar className="w-4 h-4 text-gray-600" />
@@ -353,12 +343,6 @@ const Product = () => {
                                     <div className="flex items-center gap-2 text-sm">
                                         <Package className="w-4 h-4 text-gray-600" />
                                         <div><p className="text-[10px] text-gray-500 font-bold uppercase">Unit</p><p className="font-bold text-gray-900">{product.unit?.name || product.unit?.shortName || ''}</p></div>
-                                    </div>
-                                )}
-                                {product.gstPercent > 0 && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Tag className="w-4 h-4 text-gray-600" />
-                                        <div><p className="text-[10px] text-gray-500 font-bold uppercase">GST</p><p className="font-bold text-gray-900">{product.gstPercent}%</p></div>
                                     </div>
                                 )}
                             </div>

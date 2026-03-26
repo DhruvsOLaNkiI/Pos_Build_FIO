@@ -157,7 +157,6 @@ const OrderConfirmation = () => {
                                         <p className="font-bold text-gray-900 uppercase text-xs">{item.name}</p>
                                         <p className="text-[10px] text-gray-400 font-bold">
                                             {formatCurrency(item.price)} x {item.quantity}
-                                            {item.gstPercent > 0 && ` · GST ${item.gstPercent}%`}
                                         </p>
                                     </div>
                                     <p className="font-bold shrink-0">{formatCurrency(item.total)}</p>
@@ -172,12 +171,6 @@ const OrderConfirmation = () => {
                             <span className="text-gray-500">Subtotal</span>
                             <span className="font-bold">{formatCurrency(order.subtotal)}</span>
                         </div>
-                        {order.totalGST > 0 && (
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">GST</span>
-                                <span className="font-bold">{formatCurrency(order.totalGST)}</span>
-                            </div>
-                        )}
                         {order.discount > 0 && (
                             <div className="flex justify-between text-sm text-amber-600">
                                 <span>Discount</span>

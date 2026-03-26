@@ -351,6 +351,8 @@ const Home = () => {
         localStorage.removeItem('customer_pincode');
         localStorage.removeItem('customer_store_name');
         localStorage.removeItem('customer_store_id');
+        localStorage.removeItem('customer_location_display');
+        localStorage.removeItem('customer_store_address');
         setCurrentPincode(null);
         setNearbyStoresData([]);
     };
@@ -440,7 +442,11 @@ const Home = () => {
                                 <MapPin className="h-5 w-5" />
                                 <div>
                                     <p className="font-black text-sm uppercase tracking-tight">
-                                        Delivering from {nearbyStoresData.length} store{nearbyStoresData.length > 1 ? 's' : ''} near {currentPincode}
+                                        {(() => {
+                                            const areaName = localStorage.getItem('customer_location_display');
+                                            const display = areaName || currentPincode;
+                                            return `Delivering from ${nearbyStoresData.length} store${nearbyStoresData.length > 1 ? 's' : ''} near ${display}`;
+                                        })()}
                                     </p>
                                     <p className="text-blue-200 text-xs font-bold mt-0.5">
                                         {(() => {

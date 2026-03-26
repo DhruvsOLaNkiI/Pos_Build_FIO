@@ -12,7 +12,11 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
     const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
     const [isDealsOpen, setIsDealsOpen] = useState(false);
-    const [currentPincode, setCurrentPincode] = useState(() => localStorage.getItem('customer_pincode') || 'SET LOCATION');
+    const [currentPincode, setCurrentPincode] = useState(() => {
+        const savedArea = localStorage.getItem('customer_location_display');
+        const savedPincode = localStorage.getItem('customer_pincode');
+        return savedArea || savedPincode || 'SET LOCATION';
+    });
     const [currentStoreName, setCurrentStoreName] = useState(() => localStorage.getItem('customer_store_name') || '');
     
     // Search state with debouncing
@@ -45,11 +49,12 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
         window.dispatchEvent(new CustomEvent('filterDeals', { detail: type }));
     };
 
-    const handleLocationSelect = (pincode) => {
-        setCurrentPincode(pincode);
+    const handleLocationSelect = (areaName) => {
+        setCurrentPincode(areaName);
         const savedStore = localStorage.getItem('customer_store_name');
         if (savedStore) setCurrentStoreName(savedStore);
         // Dispatch custom event so the product grid can reload
+        const pincode = localStorage.getItem('customer_pincode') || '';
         window.dispatchEvent(new CustomEvent('locationChanged', { detail: pincode }));
     };
 
@@ -158,16 +163,16 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
                     <span className="text-gray-200 mx-1 hidden sm:inline">•</span>
                     <button
                         onClick={() => setIsLocationModalOpen(true)}
-                        className="flex items-center gap-1.5 hover:text-blue-600 transition-colors bg-gray-100 px-3 py-1.5 rounded-full"
+                        className="flex items-center gap-1.5 hover:text-blue-600 transition-colors bg-gray-100 px-3 py-1.5 rounded-full max-w-xs"
                     >
-                        <MapPin className="h-3 w-3 text-blue-600" />
-                        <span className="flex items-center gap-1">
-                            {currentPincode}
+                        <MapPin className="h-3 w-3 text-blue-600 shrink-0" />
+                        <span className="flex items-center gap-1 truncate">
+                            <span className="truncate">{currentPincode}</span>
                             {currentStoreName && (
-                                <span className="text-gray-400 font-bold">• {currentStoreName.split(' · ')[0]}</span>
+                                <span className="text-gray-400 font-bold shrink-0">• {currentStoreName.split(' · ')[0]}</span>
                             )}
                         </span>
-                        <ChevronDown className="h-3 w-3" />
+                        <ChevronDown className="h-3 w-3 shrink-0" />
                     </button>
                 </div>
             </div>
