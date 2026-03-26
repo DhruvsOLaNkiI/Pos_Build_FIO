@@ -25,6 +25,7 @@ const Home = () => {
     const { view, setView, categories, setCategories, filters, setFilters } = useOutletContext();
     const [currentPincode, setCurrentPincode] = useState(() => localStorage.getItem('customer_pincode'));
     const [specialFilter, setSpecialFilter] = useState(null); // 'bulk' | 'offers' | 'deals'
+    const [searchQuery, setSearchQuery] = useState(''); // Search query state
 
     const handleCategoryNavigation = useCallback((categoryName) => {
         if (!categoryName) return;
@@ -140,9 +141,20 @@ const Home = () => {
             setView('all-products');
         };
         window.addEventListener('filterDeals', handleSpecialFilter);
+
+        // Listen for search events from GopuffHeader
+        const handleSearch = (e) => {
+            setSearchQuery(e.detail);
+            if (e.detail) {
+                setView('all-products');
+            }
+        };
+        window.addEventListener('productSearch', handleSearch);
+
         return () => {
             window.removeEventListener('locationChanged', handleLocationChange);
             window.removeEventListener('filterDeals', handleSpecialFilter);
+            window.removeEventListener('productSearch', handleSearch);
         };
     }, [currentPincode, fetchNearbyStores, setCategories, setView]);
 
@@ -177,6 +189,17 @@ const Home = () => {
     // Apply filters
     const filteredProducts = useMemo(() => {
         let result = [...activeProducts];
+
+        // Apply Search Query filter (from search bar)
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            result = result.filter(p => 
+                (p.name && p.name.toLowerCase().includes(query)) ||
+                (p.brand && p.brand.toLowerCase().includes(query)) ||
+                (p.category && p.category.toLowerCase().includes(query)) ||
+                (p.description && p.description.toLowerCase().includes(query))
+            );
+        }
 
         // Apply Special Filters (Bulk, Offers, Deals)
         if (specialFilter === 'offers') {
@@ -257,7 +280,7 @@ const Home = () => {
             }
             return p;
         });
-    }, [activeProducts, filters, offers]);
+    }, [activeProducts, filters, offers, specialFilter, searchQuery]);
 
     // Dynamically group products by category
     const categoryGroups = useMemo(() => {
@@ -358,19 +381,33 @@ const Home = () => {
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h1 className="font-extrabold italic text-4xl tracking-tighter uppercase text-black">
-                                {filters.category || filters.brand || 'ALL PRODUCTS'}.
+                                {searchQuery ? `SEARCH: "${searchQuery}"` : filters.category || filters.brand || 'ALL PRODUCTS'}.
                             </h1>
                             <p className="text-xs text-gray-400 font-bold mt-1 uppercase tracking-wider">
                                 {filteredProducts.length} item{filteredProducts.length !== 1 ? 's' : ''}
                                 {filters.inStock && ' · In Stock Only'}
+                                {searchQuery && ' · Search Results'}
                             </p>
                         </div>
-                        <button
-                            onClick={() => setView('home')}
-                            className="bg-black text-white px-6 py-3 rounded-full font-black text-xs hover:bg-gray-800 transition-colors uppercase tracking-widest"
-                        >
-                            BACK HOME
-                        </button>
+                        <div className="flex gap-2">
+                            {searchQuery && (
+                                <button
+                                    onClick={() => {
+                                        setSearchQuery('');
+                                        window.dispatchEvent(new CustomEvent('productSearch', { detail: '' }));
+                                    }}
+                                    className="bg-gray-200 text-gray-700 px-6 py-3 rounded-full font-black text-xs hover:bg-gray-300 transition-colors uppercase tracking-widest"
+                                >
+                                    CLEAR SEARCH
+                                </button>
+                            )}
+                            <button
+                                onClick={() => setView('home')}
+                                className="bg-black text-white px-6 py-3 rounded-full font-black text-xs hover:bg-gray-800 transition-colors uppercase tracking-widest"
+                            >
+                                BACK HOME
+                            </button>
+                        </div>
                     </div>
                     {filteredProducts.length === 0 ? (
                         <div className="text-center py-20 text-gray-400">

@@ -2,7 +2,7 @@ import { Search, User, ShoppingBag, ChevronDown, Star, MapPin } from 'lucide-rea
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LocationPickerModal from './LocationPickerModal';
 
 const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }) => {
@@ -14,6 +14,21 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
     const [isDealsOpen, setIsDealsOpen] = useState(false);
     const [currentPincode, setCurrentPincode] = useState(() => localStorage.getItem('customer_pincode') || 'SET LOCATION');
     const [currentStoreName, setCurrentStoreName] = useState(() => localStorage.getItem('customer_store_name') || '');
+    
+    // Search state with debouncing
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+
+    // Debounce search term (300ms delay)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+            // Dispatch search event for Home.jsx to listen
+            window.dispatchEvent(new CustomEvent('productSearch', { detail: searchTerm }));
+        }, 300);
+        
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
     const handleCategoryClick = (cat) => {
         setFilters({ category: cat, brand: '', inStock: false, sort: '', priceRange: '' });
@@ -51,7 +66,9 @@ const GopuffHeader = ({ onViewHome, onViewAccount, categories = [], setFilters }
                     </div>
                     <input
                         type="text"
-                        placeholder="Search Gopuff..."
+                        placeholder="Search products..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-11 pr-4 py-2.5 bg-gray-100 border-2 border-transparent rounded-full font-bold text-sm focus:bg-white focus:border-blue-500 transition-all outline-none placeholder:text-gray-400 placeholder:font-bold italic"
                     />
                 </div>

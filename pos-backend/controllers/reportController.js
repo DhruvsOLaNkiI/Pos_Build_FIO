@@ -2,6 +2,8 @@ const Sale = require('../models/Sale');
 const Expense = require('../models/Expense');
 const Purchase = require('../models/Purchase');
 const Product = require('../models/Product');
+const Store = require('../models/Store');
+const Customer = require('../models/Customer');
 
 // @desc    Get Sales Report (daily/weekly/monthly or custom range)
 // @route   GET /api/reports/sales
@@ -308,8 +310,145 @@ const getGSTReport = async (req, res, next) => {
     }
 };
 
+// @desc    Get GIS Report (location-based sales data)
+// @route   GET /api/reports/gis
+// @access  Private
+const getGISReport = async (req, res, next) => {
+    try {
+        const { startDate, endDate } = req.query;
+        const storeId = req.headers['x-store-id'];
+
+        const dateFilter = {};
+        if (startDate) dateFilter.$gte = new Date(startDate);
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+            dateFilter.$lte = end;
+        }
+
+        if (!startDate && !endDate) {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            dateFilter.$gte = thirtyDaysAgo;
+            dateFilter.$lte = new Date();
+        }
+
+        const query = { createdAt: dateFilter, companyId: req.user.companyId };
+        if (storeId) {
+            query.storeId = storeId;
+        }
+
+        // Get sales with store and customer data
+        const sales = await Sale.find(query)
+            .populate('storeId', 'name address city state pincode location')
+            .populate('customer', 'name mobile address city state')
+            .sort({ createdAt: -1 });
+
+        // Get all stores for the company
+        const storesQuery = { companyId: req.user.companyId };
+        if (storeId) {
+            storesQuery._id = storeId;
+        }
+        const stores = await Store.find(storesQuery).select('name address city state pincode location');
+
+        // Aggregate sales by store location
+        const storeSalesMap = {};
+        sales.forEach((sale) => {
+            const store = sale.storeId;
+            if (!store) return;
+
+            const storeKey = store._id.toString();
+            if (!storeSalesMap[storeKey]) {
+                storeSalesMap[storeKey] = {
+                    storeId: store._id,
+                    storeName: store.name,
+                    address: store.address,
+                    city: store.city,
+                    state: store.state,
+                    pincode: store.pincode,
+                    location: store.location,
+                    totalSales: 0,
+                    totalRevenue: 0,
+                    totalOrders: 0,
+                    customers: new Set(),
+                };
+            }
+            storeSalesMap[storeKey].totalSales += sale.grandTotal;
+            storeSalesMap[storeKey].totalRevenue += sale.grandTotal;
+            storeSalesMap[storeKey].totalOrders += 1;
+            if (sale.customer) {
+                storeSalesMap[storeKey].customers.add(sale.customer._id.toString());
+            }
+        });
+
+        // Convert Sets to counts and prepare final data
+        const locationData = Object.values(storeSalesMap).map((data) => ({
+            ...data,
+            uniqueCustomers: data.customers.size,
+            customers: undefined, // Remove the Set
+        }));
+
+        // Add stores with no sales
+        stores.forEach((store) => {
+            const storeKey = store._id.toString();
+            if (!storeSalesMap[storeKey]) {
+                locationData.push({
+                    storeId: store._id,
+                    storeName: store.name,
+                    address: store.address,
+                    city: store.city,
+                    state: store.state,
+                    pincode: store.pincode,
+                    location: store.location,
+                    totalSales: 0,
+                    totalRevenue: 0,
+                    totalOrders: 0,
+                    uniqueCustomers: 0,
+                });
+            }
+        });
+
+        // City-wise aggregation
+        const cityMap = {};
+        locationData.forEach((loc) => {
+            const city = loc.city || 'Unknown';
+            if (!cityMap[city]) {
+                cityMap[city] = {
+                    city,
+                    state: loc.state,
+                    totalRevenue: 0,
+                    totalOrders: 0,
+                    stores: 0,
+                };
+            }
+            cityMap[city].totalRevenue += loc.totalRevenue;
+            cityMap[city].totalOrders += loc.totalOrders;
+            cityMap[city].stores += 1;
+        });
+
+        const summary = {
+            totalLocations: locationData.length,
+            totalRevenue: locationData.reduce((sum, l) => sum + l.totalRevenue, 0),
+            totalOrders: locationData.reduce((sum, l) => sum + l.totalOrders, 0),
+            activeStores: locationData.filter((l) => l.totalOrders > 0).length,
+        };
+
+        res.status(200).json({
+            success: true,
+            data: {
+                locations: locationData,
+                cityWise: Object.values(cityMap),
+                summary,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getSalesReport,
     getProfitLossReport,
     getGSTReport,
+    getGISReport,
 };

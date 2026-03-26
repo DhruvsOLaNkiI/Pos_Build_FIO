@@ -45,12 +45,50 @@ import {
     ChevronDown,
     ChevronUp,
     RefreshCcw,
+    Download,
+    MapPin,
+    Store,
+    Users,
 } from 'lucide-react';
 
 const COLORS = ['#E8DCCA', '#9CA582', '#0a4d22ff', '#4A6B5A', '#2D4A3E', '#1F3329', '#7CB9A8', '#D4A574', '#A8C686', '#6B8F71'];
 
 const formatCurrency = (value) =>
     `₹${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+// Helper function to download data as CSV
+const downloadCSV = (data, filename, headers) => {
+    if (!data || data.length === 0) {
+        alert('No data to download');
+        return;
+    }
+
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+
+    for (const row of data) {
+        const values = headers.map((header) => {
+            const key = header.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+            let value = row[key] || row[header] || '';
+            if (typeof value === 'string' && value.includes(',')) {
+                value = `"${value}"`;
+            }
+            return value;
+        });
+        csvRows.push(values.join(','));
+    }
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
 
 const Reports = () => {
     const [activeTab, setActiveTab] = useState('sales');
@@ -66,6 +104,7 @@ const Reports = () => {
     const [plData, setPlData] = useState(null);
     const [gstData, setGstData] = useState(null);
     const [transactionsData, setTransactionsData] = useState(null);
+    const [gisData, setGisData] = useState(null);
     const [loading, setLoading] = useState(false);
 
     const fetchReport = async () => {
@@ -83,6 +122,9 @@ const Reports = () => {
             } else if (activeTab === 'transactions') {
                 const res = await API.get(`/sales?startDate=${startDate}&endDate=${endDate}`);
                 setTransactionsData(res.data.data);
+            } else if (activeTab === 'gis') {
+                const res = await API.get(`/reports/gis?startDate=${startDate}&endDate=${endDate}`);
+                setGisData(res.data.data);
             }
         } catch (err) {
             console.error('Failed to fetch report:', err);
@@ -358,6 +400,31 @@ const Reports = () => {
     const GSTTab = () => {
         if (!gstData) return null;
 
+        const handleDownloadGST = () => {
+            const csvData = gstData.slabs.map(slab => ({
+                gstRate: slab.gstPercent + '%',
+                taxableValue: slab.taxableValue,
+                cgst: slab.cgst,
+                sgst: slab.sgst,
+                totalTax: slab.totalTax,
+                invoiceCount: slab.invoiceCount
+            }));
+            
+            // Add totals row
+            csvData.push({
+                gstRate: 'TOTAL',
+                taxableValue: gstData.totals.taxableValue,
+                cgst: gstData.totals.cgst,
+                sgst: gstData.totals.sgst,
+                totalTax: gstData.totals.totalTax,
+                invoiceCount: gstData.totalInvoices
+            });
+            
+            downloadCSV(csvData, `gst_report_${startDate}_to_${endDate}.csv`, [
+                'GST Rate', 'Taxable Value', 'CGST', 'SGST', 'Total Tax', 'Invoices'
+            ]);
+        };
+
         return (
             <div className="space-y-6">
                 {/* Summary Cards */}
@@ -369,8 +436,17 @@ const Reports = () => {
 
                 {/* GST Slab Table */}
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-lg">GST Slab-wise Summary (GSTR-1)</CardTitle>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDownloadGST}
+                            disabled={!gstData.slabs || gstData.slabs.length === 0}
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download CSV
+                        </Button>
                     </CardHeader>
                     <CardContent>
                         <div className="rounded-md border border-border overflow-hidden">
@@ -505,8 +581,33 @@ const Reports = () => {
         return (
             <div className="space-y-6">
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-lg">Transaction History</CardTitle>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                const csvData = transactionsData.map(sale => ({
+                                    date: new Date(sale.createdAt).toLocaleDateString('en-IN'),
+                                    time: new Date(sale.createdAt).toLocaleTimeString('en-IN'),
+                                    invoiceNo: sale.invoiceNo || 'N/A',
+                                    cashier: sale.seller?.name || 'Unknown',
+                                    paymentMethod: sale.paymentMethods?.map(pm => pm.method).join(', ') || sale.paymentMethod || 'Unknown',
+                                    subtotal: sale.subtotal || 0,
+                                    gst: sale.totalGST || 0,
+                                    discount: sale.discount || 0,
+                                    grandTotal: sale.grandTotal || 0,
+                                    status: sale.returnStatus || 'normal'
+                                }));
+                                downloadCSV(csvData, `transactions_${startDate}_to_${endDate}.csv`, [
+                                    'Date', 'Time', 'Invoice No', 'Cashier', 'Payment Method', 'Subtotal', 'GST', 'Discount', 'Grand Total', 'Status'
+                                ]);
+                            }}
+                            disabled={!transactionsData || transactionsData.length === 0}
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download CSV
+                        </Button>
                     </CardHeader>
                     <CardContent>
                         <div className="rounded-md border border-border overflow-hidden">
@@ -736,6 +837,159 @@ const Reports = () => {
         );
     };
 
+    // ======================== GIS REPORT TAB ========================
+    const GISTab = () => {
+        if (!gisData) return null;
+
+        const { locations, cityWise, summary } = gisData;
+
+        const handleDownloadGIS = () => {
+            const csvData = locations.map(loc => ({
+                storeName: loc.storeName,
+                address: loc.address,
+                city: loc.city,
+                state: loc.state,
+                pincode: loc.pincode,
+                totalRevenue: loc.totalRevenue,
+                totalOrders: loc.totalOrders,
+                uniqueCustomers: loc.uniqueCustomers
+            }));
+            downloadCSV(csvData, `gis_report_${startDate}_to_${endDate}.csv`, [
+                'Store Name', 'Address', 'City', 'State', 'Pincode', 'Total Revenue', 'Total Orders', 'Unique Customers'
+            ]);
+        };
+
+        const handleDownloadCityWise = () => {
+            downloadCSV(cityWise, `city_wise_report_${startDate}_to_${endDate}.csv`, [
+                'City', 'State', 'Total Revenue', 'Total Orders', 'Stores'
+            ]);
+        };
+
+        return (
+            <div className="space-y-6">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <KPICard title="Total Locations" value={summary.totalLocations} icon={Store} color="text-blue-400" />
+                    <KPICard title="Active Stores" value={summary.activeStores} icon={MapPin} color="text-green-400" />
+                    <KPICard title="Total Revenue" value={formatCurrency(summary.totalRevenue)} icon={IndianRupee} color="text-yellow-400" />
+                    <KPICard title="Total Orders" value={summary.totalOrders} icon={ShoppingCart} color="text-purple-400" />
+                </div>
+
+                {/* City-wise Summary */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <MapPin className="w-5 h-5" />
+                            City-wise Sales Summary
+                        </CardTitle>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDownloadCityWise}
+                            disabled={!cityWise || cityWise.length === 0}
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download City Report
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="rounded-md border border-border overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted">
+                                        <TableHead>City</TableHead>
+                                        <TableHead>State</TableHead>
+                                        <TableHead className="text-right">Stores</TableHead>
+                                        <TableHead className="text-right">Total Orders</TableHead>
+                                        <TableHead className="text-right">Total Revenue</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {cityWise.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                                                No city data available.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        cityWise.map((city, i) => (
+                                            <TableRow key={i} className="hover:bg-muted">
+                                                <TableCell className="font-medium">{city.city}</TableCell>
+                                                <TableCell>{city.state}</TableCell>
+                                                <TableCell className="text-right">{city.stores}</TableCell>
+                                                <TableCell className="text-right">{city.totalOrders}</TableCell>
+                                                <TableCell className="text-right font-semibold">{formatCurrency(city.totalRevenue)}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Store-wise Details */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Store className="w-5 h-5" />
+                            Store-wise Details
+                        </CardTitle>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDownloadGIS}
+                            disabled={!locations || locations.length === 0}
+                        >
+                            <Download className="w-4 h-4 mr-2" />
+                            Download Full Report
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="rounded-md border border-border overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted">
+                                        <TableHead>Store Name</TableHead>
+                                        <TableHead>Address</TableHead>
+                                        <TableHead>City</TableHead>
+                                        <TableHead className="text-right">Orders</TableHead>
+                                        <TableHead className="text-right">Customers</TableHead>
+                                        <TableHead className="text-right">Revenue</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {locations.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                                                No store location data available.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        locations.map((loc, i) => (
+                                            <TableRow key={i} className="hover:bg-muted">
+                                                <TableCell className="font-medium">{loc.storeName}</TableCell>
+                                                <TableCell className="max-w-xs truncate">{loc.address}</TableCell>
+                                                <TableCell>{loc.city}, {loc.state}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <span className={loc.totalOrders > 0 ? 'text-green-400' : 'text-muted-foreground'}>
+                                                        {loc.totalOrders}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-right">{loc.uniqueCustomers}</TableCell>
+                                                <TableCell className="text-right font-semibold">{formatCurrency(loc.totalRevenue)}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    };
+
     // ======================== RENDER ========================
     return (
         <div className="animate-fade-in space-y-6">
@@ -743,7 +997,7 @@ const Reports = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
-                    <p className="text-muted-foreground mt-1">Sales, Profit & Loss, and GST reports</p>
+                    <p className="text-muted-foreground mt-1">Sales, Profit & Loss, GST, and Location reports</p>
                 </div>
             </div>
 
@@ -828,11 +1082,12 @@ const Reports = () => {
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="sales">Sales Report</TabsTrigger>
                     <TabsTrigger value="profit-loss">Profit & Loss</TabsTrigger>
                     <TabsTrigger value="gst">GST Report</TabsTrigger>
-                    <TabsTrigger value="transactions">Transaction History</TabsTrigger>
+                    <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                    <TabsTrigger value="gis">GIS Report</TabsTrigger>
                 </TabsList>
 
                 {loading ? (
@@ -852,6 +1107,9 @@ const Reports = () => {
                         </TabsContent>
                         <TabsContent value="transactions">
                             <TransactionHistoryTab />
+                        </TabsContent>
+                        <TabsContent value="gis">
+                            <GISTab />
                         </TabsContent>
                     </>
                 )}

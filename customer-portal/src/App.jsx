@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import GopuffBanner from './components/GopuffBanner';
 import GopuffHeader from './components/GopuffHeader';
+import Footer from './components/Footer';
 import Login from './pages/Login';
 import CompanySelection from './pages/CompanySelection';
 import Home from './pages/Home';
@@ -39,6 +40,7 @@ const AppLayout = () => {
       <main className="flex-1 w-full overflow-x-hidden">
         <Outlet context={{ view, setView, categories, setCategories, filters, setFilters }} />
       </main>
+      <Footer />
     </div>
   );
 };
