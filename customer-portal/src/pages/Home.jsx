@@ -12,6 +12,8 @@ import GopuffShopCategoriesGrid from '../components/GopuffShopCategoriesGrid';
 import GopuffBottomHeroGrid from '../components/GopuffBottomHeroGrid';
 import FilterBar from '../components/FilterBar';
 import AccountView from '../components/AccountView';
+import GopuffHeroSlider from '../components/GopuffHeroSlider';
+import GopuffHeroCarousel from '../components/GopuffHeroCarousel';
 
 const Home = () => {
     const { trackProductView } = useCustomerActivityTracking();
@@ -19,9 +21,38 @@ const Home = () => {
     const [offers, setOffers] = useState([]);
     const [nearbyStoresData, setNearbyStoresData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [shopSettings, setShopSettings] = useState(null);
     const { view, setView, categories, setCategories, filters, setFilters } = useOutletContext();
     const [currentPincode, setCurrentPincode] = useState(() => localStorage.getItem('customer_pincode'));
     const [specialFilter, setSpecialFilter] = useState(null); // 'bulk' | 'offers' | 'deals'
+
+    const handleCategoryNavigation = useCallback((categoryName) => {
+        if (!categoryName) return;
+        const lowerCat = categoryName.toLowerCase();
+        
+        if (['deals', 'offers', 'price drops'].includes(lowerCat)) {
+            setSpecialFilter(lowerCat);
+            setFilters({ category: '', brand: '', inStock: false, sort: '', priceRange: '' });
+        } else {
+            setSpecialFilter(null);
+            // Match the actual category casing if possible
+            const matchedCategory = categories.find(c => c.toLowerCase() === lowerCat) || categoryName;
+            setFilters({ category: matchedCategory, brand: '', inStock: false, sort: '', priceRange: '' });
+        }
+        setView('all-products');
+        window.scrollTo(0, 0);
+    }, [categories, setFilters, setSpecialFilter, setView]);
+
+    const handleBannerNavigation = useCallback((type) => {
+        if (['deals', 'offers', 'price drops'].includes(type?.toLowerCase())) {
+            setSpecialFilter(type.toLowerCase());
+            setFilters({ category: '', brand: '', inStock: false, sort: '', priceRange: '' });
+        } else {
+            setSpecialFilter(null);
+        }
+        setView('all-products');
+        window.scrollTo(0, 0);
+    }, [setFilters, setSpecialFilter, setView]);
 
 
     const fetchOffers = useCallback(async () => {
@@ -58,9 +89,22 @@ const Home = () => {
     useEffect(() => {
         const fetchProductsAndOffers = async () => {
             try {
-                const [prodRes, offRes] = await Promise.all([
+                // Fetch settings, but handle unauthenticated errors gracefully if they arise (though Home is protected)
+                const fetchSettings = async () => {
+                    try {
+                        const token = localStorage.getItem('customerToken');
+                        if (!token) return { data: null };
+                        return await API.get('/shop-settings');
+                    } catch (e) {
+                        console.error('Failed to fetch shop settings', e);
+                        return { data: null };
+                    }
+                };
+
+                const [prodRes, offRes, settingsRes] = await Promise.all([
                     API.get('/products'),
-                    API.get('/offers')
+                    API.get('/offers'),
+                    fetchSettings()
                 ]);
                 if (prodRes.data?.success) {
                     const allProds = prodRes.data.data;
@@ -69,6 +113,9 @@ const Home = () => {
                     setCategories(cats);
                 }
                 if (offRes.data?.success) setOffers(offRes.data.data);
+                if (settingsRes?.data?.success && settingsRes.data.data) {
+                    setShopSettings(settingsRes.data.data);
+                }
             } catch (error) {
                 console.error('Failed to fetch data', error);
             } finally {
@@ -385,8 +432,16 @@ const Home = () => {
                 </div>
             )}
 
-            <GopuffCategoryRow />
-            <GopuffHeroGrid />
+            <GopuffCategoryRow onCategoryClick={handleCategoryNavigation} />
+            
+            {shopSettings?.heroSectionType === 'slider' ? (
+                <GopuffHeroSlider onBannerClick={handleBannerNavigation} />
+            ) : shopSettings?.heroSectionType === 'carousel' ? (
+                <GopuffHeroCarousel onBannerClick={handleBannerNavigation} />
+            ) : (
+                <GopuffHeroGrid onBannerClick={handleBannerNavigation} />
+            )}
+
             <GopuffMarquee />
 
             {/* When pincode is set: Show products grouped by CATEGORY as carousels */}
@@ -409,7 +464,7 @@ const Home = () => {
                         onMoreClick={() => setView('all-products')}
                     />
 
-                    <GopuffShopCategoriesGrid onCategoryClick={(cat) => { setFilters({ ...filters, category: cat }); setView('all-products'); }} />
+                    <GopuffShopCategoriesGrid onCategoryClick={handleCategoryNavigation} />
 
                     {/* Dynamic Category Carousels */}
                     {Object.entries(categoryGroups).map(([category, catProducts]) => {
@@ -436,18 +491,17 @@ const Home = () => {
                                 title={`${category.toUpperCase()}.`}
                                 products={productsWithOffers.slice(0, 15)}
                                 totalItems={catProducts.length}
-                                onMoreClick={() => { setFilters({ ...filters, category }); setView('all-products'); }}
+                                onMoreClick={() => handleCategoryNavigation(category)}
                             />
                         );
                     })}
 
-                    {/* Price Drops */}
                     {priceDrops.length > 0 && (
                         <GopuffProductCarousel
                             title="PRICE DROPS."
                             products={priceDrops}
                             totalItems={priceDrops.length}
-                            onMoreClick={() => setView('all-products')}
+                            onMoreClick={() => handleCategoryNavigation('price drops')}
                         />
                     )}
                 </>
@@ -459,7 +513,7 @@ const Home = () => {
                             title="🔥 DEALS FOR YOU."
                             products={dealProducts}
                             totalItems={dealProducts.length}
-                            onMoreClick={() => setView('all-products')}
+                            onMoreClick={() => handleCategoryNavigation('deals')}
                         />
                     )}
 

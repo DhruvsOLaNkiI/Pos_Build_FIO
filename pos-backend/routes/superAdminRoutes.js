@@ -6,7 +6,9 @@ const {
     getCompany,
     updateCompanyStatus,
     getPlatformAnalytics,
-    createCompany
+    createCompany,
+    getGlobalSettings,
+    updateGlobalSettings
 } = require('../controllers/superAdminController');
 const {
     getApiAnalytics,
@@ -35,6 +37,10 @@ router.get('/companies', getCompanies);
 router.get('/companies/:id', getCompany);
 router.put('/companies/:id/status', updateCompanyStatus);
 router.post('/companies', createCompany);
+
+// Global Settings
+router.get('/global-settings', getGlobalSettings);
+router.put('/global-settings', updateGlobalSettings);
 
 // API Monitoring Routes
 router.get('/api-monitoring/analytics', getApiAnalytics);

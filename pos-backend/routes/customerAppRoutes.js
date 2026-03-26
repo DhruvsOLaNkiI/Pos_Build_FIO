@@ -59,6 +59,12 @@ router.get('/companies/:id', async (req, res, next) => {
             isActive: true 
         }).select('-purchasePrice -__v');
 
+        const GlobalSettings = require('../models/GlobalSettings');
+        let shopSettings = await GlobalSettings.findOne({});
+        if (!shopSettings) {
+            shopSettings = await GlobalSettings.create({ heroSectionType: 'grid' });
+        }
+
         res.status(200).json({
             success: true,
             data: {
@@ -70,6 +76,7 @@ router.get('/companies/:id', async (req, res, next) => {
                     address: company.address,
                     logo: company.logo
                 },
+                shopSettings,
                 stores,
                 products
             }
@@ -166,6 +173,22 @@ router.get('/auth/profile', protect, async (req, res, next) => {
                 totalPurchases: customer.totalPurchases,
             }
         });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Get Shop Settings for Customer Portal
+// @route   GET /api/customer-app/shop-settings
+// @access  Private (Customer)
+router.get('/shop-settings', protect, async (req, res, next) => {
+    try {
+        const GlobalSettings = require('../models/GlobalSettings');
+        let shopSettings = await GlobalSettings.findOne({});
+        if (!shopSettings) {
+            shopSettings = await GlobalSettings.create({ heroSectionType: 'grid' });
+        }
+        res.status(200).json({ success: true, data: shopSettings });
     } catch (error) {
         next(error);
     }

@@ -8,6 +8,11 @@ const shopSettingsSchema = new mongoose.Schema(
             required: true,
             unique: true,
         },
+        heroSectionType: {
+            type: String,
+            enum: ['grid', 'slider'],
+            default: 'grid',
+        },
         shopName: {
             type: String,
             default: 'My Shop',

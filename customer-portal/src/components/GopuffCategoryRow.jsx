@@ -14,11 +14,15 @@ const categories = [
   { name: 'Personal Care', img: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=100&h=100&fit=crop' },
 ];
 
-const GopuffCategoryRow = () => (
+const GopuffCategoryRow = ({ onCategoryClick }) => (
   <div className="max-w-[1440px] mx-auto px-4 py-8">
     <div className="flex gap-6 overflow-x-auto hide-scrollbar pb-2">
       {categories.map((cat, i) => (
-        <div key={i} className="flex flex-col items-center gap-2 min-w-[72px] cursor-pointer group">
+        <div 
+          key={i} 
+          className="flex flex-col items-center gap-2 min-w-[72px] cursor-pointer group"
+          onClick={() => onCategoryClick && onCategoryClick(cat.name)}
+        >
           <div className="relative w-[72px] h-[72px] rounded-full overflow-hidden border-2 border-transparent group-hover:border-blue-500 transition-all shadow-sm">
             <img src={cat.img} alt={cat.name} className="w-full h-full object-cover" />
             {cat.badge && (

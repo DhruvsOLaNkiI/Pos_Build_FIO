@@ -235,4 +235,43 @@ const createCompany = async (req, res, next) => {
     }
 };
 
-module.exports = { getCompanies, getCompany, updateCompanyStatus, getPlatformAnalytics, createCompany };
+// @desc    Get Global settings from Super Admin
+// @route   GET /api/super-admin/global-settings
+// @access  Super Admin only
+const getGlobalSettings = async (req, res, next) => {
+    try {
+        const GlobalSettings = require('../models/GlobalSettings');
+        let settings = await GlobalSettings.findOne({});
+        if (!settings) {
+            settings = await GlobalSettings.create({ heroSectionType: 'grid' });
+        }
+        res.status(200).json({ success: true, data: settings });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Update Global settings from Super Admin
+// @route   PUT /api/super-admin/global-settings
+// @access  Super Admin only
+const updateGlobalSettings = async (req, res, next) => {
+    try {
+        const { heroSectionType, accentColor, productCardStyle } = req.body;
+        const GlobalSettings = require('../models/GlobalSettings');
+        let settings = await GlobalSettings.findOne({});
+        if (!settings) {
+            settings = await GlobalSettings.create({ heroSectionType: 'grid' });
+        }
+        
+        if (heroSectionType) settings.heroSectionType = heroSectionType;
+        if (accentColor) settings.accentColor = accentColor;
+        if (productCardStyle) settings.productCardStyle = productCardStyle;
+        await settings.save();
+
+        res.status(200).json({ success: true, data: settings });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { getCompanies, getCompany, updateCompanyStatus, getPlatformAnalytics, createCompany, getGlobalSettings, updateGlobalSettings };
