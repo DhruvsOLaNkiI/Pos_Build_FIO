@@ -1,5 +1,6 @@
 const Sale = require('../models/Sale');
 const Product = require('../models/Product');
+const RegisterSession = require('../models/RegisterSession');
 
 // @desc    Create new sale
 // @route   POST /api/sales
@@ -12,7 +13,12 @@ const createSale = async (req, res, next) => {
             return next(new Error('Store context is required to complete a sale'));
         }
 
-        const { items, paymentMethods, customer, discount, cartGstPercent } = req.body;
+        let { items, paymentMethods, customer, discount, cartGstPercent, registerId, cashGiven, changeGiven } = req.body;
+        
+        discount = Number(discount) || 0;
+        cartGstPercent = Number(cartGstPercent) || 0;
+        cashGiven = Number(cashGiven) || 0;
+        changeGiven = Number(changeGiven) || 0;
 
         if (!items || items.length === 0) {
             res.status(400);
@@ -59,7 +65,7 @@ const createSale = async (req, res, next) => {
             await product.save();
         }
 
-        const grandTotal = subtotal + totalGST - (discount || 0);
+        const grandTotal = Math.max(0, subtotal + totalGST - discount);
 
         // Handle Customer (Find or Create)
         let saleCustomer = customer; // If ID passed directly
@@ -101,8 +107,48 @@ const createSale = async (req, res, next) => {
             customer: saleCustomer,
             seller: req.user._id,
             storeId,
-            companyId: req.user.companyId
+            companyId: req.user.companyId,
+            registerId: registerId || null
         });
+
+        // ----------------------------------------------------
+        // Handle Register Session Cash Tracking
+        // ----------------------------------------------------
+        if (registerId) {
+            const hasCashPayment = paymentMethods.some(p => p.method === 'cash');
+            const cashAmount = paymentMethods.find(p => p.method === 'cash')?.amount || 0;
+
+            if (hasCashPayment && cashAmount > 0) {
+                const session = await RegisterSession.findOne({ registerId, status: 'open' });
+                
+                if (session) {
+                    session.totalSales += cashAmount;
+                    
+                    session.transactions.push({
+                        type: 'sale',
+                        amount: cashAmount,
+                        note: `Sale Invoice: ${invoiceNo}`,
+                        saleId: sale._id,
+                        timestamp: Date.now()
+                    });
+
+                    // Log change given back to customer (just for record keeping, doesn't affect expectedBalance since expectedBalance = sales + in - out)
+                    // Actually, if cashGiven > cashAmount, the difference is changeGiven. Wait, cash in drawer only increases by `cashAmount` (the exact sale total). 
+                    // Expected cash calculation using totalSales already only uses `cashAmount` (the required cash for the sale), not `cashGiven`.
+                    if (changeGiven > 0) {
+                        session.transactions.push({
+                            type: 'change_given',
+                            amount: changeGiven,
+                            note: `Change given for invoice: ${invoiceNo}`,
+                            saleId: sale._id,
+                            timestamp: Date.now()
+                        });
+                    }
+
+                    await session.save();
+                }
+            }
+        }
 
         res.status(201).json({ success: true, data: sale });
     } catch (error) {

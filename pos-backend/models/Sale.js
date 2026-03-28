@@ -64,6 +64,10 @@ const saleSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Customer',
         },
+        registerId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Register',
+        },
         orderSource: {
             type: String,
             enum: ['instore', 'app'],

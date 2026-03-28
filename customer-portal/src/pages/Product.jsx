@@ -6,7 +6,7 @@ import API from '../services/api';
 import {
     Loader2, ArrowLeft, Plus, Minus, Store as StoreIcon,
     MapPin, Tag, Package, Building2, Shield, Calendar, ChevronRight,
-    AlertTriangle, CheckCircle, X, ShoppingCart
+    AlertTriangle, CheckCircle, X, ShoppingCart, Star, MessageSquare
 } from 'lucide-react';
 
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop';
@@ -24,6 +24,10 @@ const Product = () => {
     const [error, setError] = useState('');
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [imgError, setImgError] = useState(false);
+    const [reviews, setReviews] = useState([]);
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
     const quantity = product ? getQuantity(product._id) : 0;
 
@@ -34,9 +38,10 @@ const Product = () => {
                 setError('');
                 setImgError(false);
                 setSelectedImageIndex(0);
-                const [productRes, offersRes] = await Promise.all([
+                const [productRes, offersRes, reviewsRes] = await Promise.all([
                     API.get(`/products/${id}`),
-                    API.get('/offers')
+                    API.get('/offers'),
+                    API.get(`/products/${id}/reviews`)
                 ]);
                 if (productRes.data.success) {
                     const prod = productRes.data.product || productRes.data.data.product;
@@ -54,6 +59,9 @@ const Product = () => {
                             (o.applicableTo === 'product' && o.applicableProduct && prod._id === o.applicableProduct)
                         );
                         setMatchedOffer(offer || null);
+                    }
+                    if (reviewsRes.data?.success) {
+                        setReviews(reviewsRes.data.data);
                     }
                 } else {
                     setError('Product not found');
@@ -196,6 +204,21 @@ const Product = () => {
                             {product.name}
                         </h1>
 
+                        {/* Rating Summary */}
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                        key={star}
+                                        className={`w-4 h-4 ${star <= Math.round(product.averageRating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`}
+                                    />
+                                ))}
+                            </div>
+                            <span className="text-sm font-black italic tracking-widest text-gray-400">
+                                {product.averageRating || 0} / 5 ({product.totalReviews || 0} REVIEWS)
+                            </span>
+                        </div>
+
                         {/* Variant Info */}
                         {product.variant && (
                             <div className="flex items-center gap-2">
@@ -317,6 +340,16 @@ const Product = () => {
                             )}
                         </div>
 
+                        {/* Description */}
+                        {product.description && (
+                            <div className="border-t border-gray-100 pt-6 mt-2">
+                                <h3 className="font-black text-xs uppercase tracking-widest text-gray-600 mb-3">DESCRIPTION</h3>
+                                <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-wrap">
+                                    {product.description}
+                                </p>
+                            </div>
+                        )}
+
                         {/* Product Details */}
                         <div className="border-t border-gray-100 pt-6 mt-2">
                             <h3 className="font-black text-xs uppercase tracking-widest text-gray-600 mb-4">PRODUCT DETAILS</h3>
@@ -371,6 +404,101 @@ const Product = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Reviews Section */}
+                        <div className="border-t border-gray-100 pt-6 mt-2">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="font-black text-xs uppercase tracking-widest text-gray-600">CUSTOMER REVIEWS</h3>
+                                <button
+                                    onClick={() => setIsReviewOpen(!isReviewOpen)}
+                                    className="text-blue-600 font-extrabold text-[10px] uppercase tracking-widest hover:underline"
+                                >
+                                    {isReviewOpen ? 'CANCEL' : 'WRITE A REVIEW'}
+                                </button>
+                            </div>
+
+                            {isReviewOpen && (
+                                <div className="bg-gray-50 rounded-2xl p-6 mb-8 animate-in fade-in slide-in-from-top-4">
+                                    <h4 className="font-black text-sm uppercase mb-4 tracking-tighter italic">Share your experience</h4>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Rating</p>
+                                            <div className="flex gap-2">
+                                                {[1, 2, 3, 4, 5].map((s) => (
+                                                    <button
+                                                        key={s}
+                                                        onClick={() => setReviewForm({ ...reviewForm, rating: s })}
+                                                        className="transition-transform active:scale-90"
+                                                    >
+                                                        <Star className={`w-6 h-6 ${s <= reviewForm.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 hover:text-yellow-200'}`} />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Comment</p>
+                                            <textarea
+                                                className="w-full bg-white border border-gray-200 rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                                                placeholder="What did you like or dislike? How was the quality?"
+                                                value={reviewForm.comment}
+                                                onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                                            />
+                                        </div>
+                                        <button
+                                            disabled={isSubmittingReview}
+                                            onClick={async () => {
+                                                setIsSubmittingReview(true);
+                                                try {
+                                                    const res = await API.post(`/products/${product._id}/reviews`, reviewForm);
+                                                    if (res.data.success) {
+                                                        const reviewsRes = await API.get(`/products/${product._id}/reviews`);
+                                                        setReviews(reviewsRes.data.data);
+                                                        setIsReviewOpen(false);
+                                                        setReviewForm({ rating: 5, comment: '' });
+                                                        // Update product stats locally
+                                                        const { data: updatedProductRes } = await API.get(`/products/${product._id}`);
+                                                        setProduct(updatedProductRes.product || updatedProductRes.data.product);
+                                                    }
+                                                } catch (err) {
+                                                    alert(err.response?.data?.message || 'Failed to submit review. Are you logged in?');
+                                                } finally {
+                                                    setIsSubmittingReview(false);
+                                                }
+                                            }}
+                                            className="w-full bg-black text-white font-black text-xs uppercase tracking-[0.2em] py-4 rounded-xl hover:bg-gray-900 transition-colors disabled:opacity-50"
+                                        >
+                                            {isSubmittingReview ? 'SUBMITTING...' : 'POST REVIEW'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {reviews.length === 0 ? (
+                                <div className="text-center py-10 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                                    <MessageSquare className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No reviews yet. Be the first!</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {reviews.map((r) => (
+                                        <div key={r._id} className="bg-[#fcfcfc] border border-gray-100 rounded-2xl p-5 shadow-sm">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <p className="font-extrabold text-xs uppercase tracking-tight text-gray-900">{r.customer?.name}</p>
+                                                    <div className="flex gap-0.5 mt-1">
+                                                        {[1, 2, 3, 4, 5].map((s) => (
+                                                            <Star key={s} className={`w-3 h-3 ${s <= r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase">{new Date(r.createdAt).toLocaleDateString()}</span>
+                                            </div>
+                                            <p className="text-gray-600 text-sm leading-relaxed italic pr-4">“{r.comment}”</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

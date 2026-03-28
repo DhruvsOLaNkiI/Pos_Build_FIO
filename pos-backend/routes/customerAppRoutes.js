@@ -7,6 +7,7 @@ const Sale = require('../models/Sale');
 const Store = require('../models/Store');
 const Company = require('../models/Company');
 const CustomerAddress = require('../models/CustomerAddress');
+const Review = require('../models/Review');
 const { protect } = require('../middleware/authMiddleware'); // For protected customer routes later if needed
 
 // @desc    Get All Active Companies (for company selection screen)
@@ -613,6 +614,50 @@ router.get('/products/:id', async (req, res, next) => {
     }
 });
 
+// @desc    Get Product Reviews
+// @route   GET /api/customer-app/products/:id/reviews
+// @access  Public
+router.get('/products/:id/reviews', async (req, res, next) => {
+    try {
+        const reviews = await Review.find({ product: req.params.id, isApproved: true })
+            .populate('customer', 'name')
+            .sort({ createdAt: -1 });
+        
+        res.status(200).json({ success: true, data: reviews });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// @desc    Add a product review
+// @route   POST /api/customer-app/products/:id/reviews
+// @access  Private (Customer)
+router.post('/products/:id/reviews', protect, async (req, res, next) => {
+    try {
+        const { rating, comment } = req.body;
+        const productId = req.params.id;
+        const customerId = req.user._id;
+
+        // Check if customer already reviewed this product
+        const existingReview = await Review.findOne({ product: productId, customer: customerId });
+        if (existingReview) {
+            res.status(400);
+            return next(new Error('You have already reviewed this product'));
+        }
+
+        const review = await Review.create({
+            product: productId,
+            customer: customerId,
+            rating,
+            comment
+        });
+
+        res.status(201).json({ success: true, data: review });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // @desc    Get Active Offers (Public)
 // @route   GET /api/customer-app/offers
 // @access  Public
@@ -806,6 +851,10 @@ router.post('/orders', protect, async (req, res, next) => {
         // Generate Invoice/Order Number
         const invoiceNo = `APP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+        const GlobalSettings = require('../models/GlobalSettings');
+        const shopSettings = await GlobalSettings.findOne({});
+        const defaultGst = shopSettings?.defaultGstPercent || 0;
+
         let subtotal = 0;
         let totalGST = 0;
         const saleItems = [];
@@ -823,15 +872,23 @@ router.post('/orders', protect, async (req, res, next) => {
                 return next(new Error(`Insufficient stock for ${product.name}`));
             }
 
-            const itemTotal = product.sellingPrice * item.quantity;
-            const itemGST = (itemTotal * (product.gstPercent / 100));
+            const price = parseFloat(product.sellingPrice) || 0;
+            let gst = parseFloat(product.gstPercent) || 0;
+            
+            // If product has no GST, use global default
+            if (!gst || gst === 0) {
+                gst = defaultGst;
+            }
+
+            const itemTotal = price * item.quantity;
+            const itemGST = (itemTotal * (gst / 100));
 
             saleItems.push({
                 product: product._id,
                 name: product.name,
                 quantity: item.quantity,
-                price: product.sellingPrice,
-                gstPercent: product.gstPercent,
+                price: price,
+                gstPercent: gst,
                 total: itemTotal + itemGST
             });
 

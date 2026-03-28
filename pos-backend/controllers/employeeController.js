@@ -7,7 +7,14 @@ const bcrypt = require('bcryptjs');
 // @access  Private (Owner only)
 const getEmployees = async (req, res, next) => {
     try {
-        const employees = await User.find({ companyId: req.user.companyId, role: { $ne: 'owner' } })
+        const { role } = req.query;
+        let query = { companyId: req.user.companyId, role: { $ne: 'owner' } };
+        
+        if (role) {
+            query.role = role;
+        }
+
+        const employees = await User.find(query)
             .select('-password')
             .populate('defaultStore', 'name code')
             .populate('accessibleStores', 'name code')

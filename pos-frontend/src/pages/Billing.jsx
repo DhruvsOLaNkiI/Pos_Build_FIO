@@ -29,18 +29,24 @@ import {
     Pause,
     ClipboardList,
     Clock,
-    RotateCcw
+    RotateCcw,
+    AlertTriangle,
+    Monitor,
+    Loader2,
+    ArrowLeftRight,
+    User
 } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
 
 const Billing = () => {
-    const { user } = useAuth();
+    const { user, activeStore } = useAuth();
     const { toast } = useToast();
 
     const [products, setProducts] = useState([]);
@@ -54,6 +60,16 @@ const Billing = () => {
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [processing, setProcessing] = useState(false);
+    const [cashGiven, setCashGiven] = useState('');
+
+    // Session & Register State
+    const [activeRegister, setActiveRegister] = useState(null);
+    const [checkingSession, setCheckingSession] = useState(true);
+    const [allRegisters, setAllRegisters] = useState([]);
+    const [isSelectRegisterOpen, setIsSelectRegisterOpen] = useState(false);
+    const [openingBalanceInput, setOpeningBalanceInput] = useState('');
+    const [pendingRegister, setPendingRegister] = useState(null); // register waiting for opening balance
+    const [switchingRegister, setSwitchingRegister] = useState(false);
 
     // Filter & Order State
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -80,11 +96,77 @@ const Billing = () => {
     const searchInputRef = useRef(null);
 
     useEffect(() => {
+        if (activeStore) {
+            checkActiveSession();
+        }
         fetchProducts();
         fetchHeldOrders();
         fetchOffers();
         searchInputRef.current?.focus();
-    }, []);
+    }, [activeStore]);
+
+    const checkActiveSession = async () => {
+        setCheckingSession(true);
+        try {
+            const { data } = await API.get(`/registers?storeId=${activeStore}`);
+            if (data.success && data.data) {
+                setAllRegisters(data.data);
+                // Find if this user has an active session
+                const activeReg = data.data.find(r => 
+                    r.activeSession && 
+                    r.activeSession.cashierId._id === user._id
+                );
+                setActiveRegister(activeReg || null);
+                // If no active session, auto-prompt register selection
+                if (!activeReg && data.data.length > 0) {
+                    setIsSelectRegisterOpen(true);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to check register session', error);
+        } finally {
+            setCheckingSession(false);
+        }
+    };
+
+    const handleSelectRegister = (reg) => {
+        if (reg.activeSession && reg.activeSession.cashierId._id !== user._id) {
+            toast({ title: 'Counter In Use', description: `This counter is currently used by ${reg.activeSession.cashierId.name}`, variant: 'destructive' });
+            return;
+        }
+        if (reg.activeSession && reg.activeSession.cashierId._id === user._id) {
+            // Already this user's session, just switch to it
+            setActiveRegister(reg);
+            setIsSelectRegisterOpen(false);
+            setPendingRegister(null);
+            toast({ title: 'Counter Selected', description: `Now billing on ${reg.name}` });
+            return;
+        }
+        // No active session — ask for opening balance
+        setPendingRegister(reg);
+        setOpeningBalanceInput('');
+    };
+
+    const handleOpenSession = async () => {
+        if (!pendingRegister) return;
+        setSwitchingRegister(true);
+        try {
+            await API.post(`/registers/${pendingRegister._id}/open-session`, {
+                openingBalance: Number(openingBalanceInput) || 0,
+                deviceInfo: navigator.userAgent
+            });
+            toast({ title: 'Session Opened', description: `${pendingRegister.name} is now active with ₹${Number(openingBalanceInput) || 0} opening balance` });
+            setPendingRegister(null);
+            setIsSelectRegisterOpen(false);
+            setOpeningBalanceInput('');
+            // Refresh registers
+            await checkActiveSession();
+        } catch (error) {
+            toast({ title: 'Failed', description: error.response?.data?.message || 'Could not open session', variant: 'destructive' });
+        } finally {
+            setSwitchingRegister(false);
+        }
+    };
 
     const fetchOffers = async () => {
         try {
@@ -203,21 +285,28 @@ const Billing = () => {
         setDiscount(calcDiscount);
     }, [selectedOffer, rawTotal]);
 
-    const total = rawTotal - discount;
+    const total = Math.max(0, rawTotal - (Number(discount) || 0));
 
     const handleCheckout = async () => {
         try {
             setProcessing(true);
+            
+            const finalCashGiven = Number(cashGiven) || 0;
+            const changeGiven = paymentMethod === 'cash' ? Math.max(0, finalCashGiven - total) : 0;
+            
             const payload = {
                 items: cart.map((item) => ({
                     productId: item._id,
                     quantity: item.quantity,
                 })),
                 paymentMethods: [{ method: paymentMethod, amount: total }],
-                discount: discount,
-                cartGstPercent: cartGstPercent,
+                discount: (Number(discount) || 0),
+                cartGstPercent: (Number(cartGstPercent) || 0),
                 customerName,
-                customerPhone
+                customerPhone,
+                registerId: activeRegister ? activeRegister._id : undefined,
+                cashGiven: finalCashGiven,
+                changeGiven
             };
 
             const { data } = await API.post('/sales', payload);
@@ -232,6 +321,8 @@ const Billing = () => {
                 customerName: customerName || 'Walk-in Customer',
                 customerPhone: customerPhone || '-',
                 paymentMethod: paymentMethod,
+                cashGiven: finalCashGiven,
+                changeGiven,
             });
             setIsCheckoutOpen(false);
             setIsInvoiceOpen(true);
@@ -265,6 +356,7 @@ const Billing = () => {
         setSelectedOffer(null);
         setCustomerName('');
         setCustomerPhone('');
+        setCashGiven('');
         setOrderId(`ORD-${Math.floor(100000 + Math.random() * 900000)}`);
     };
 
@@ -544,8 +636,34 @@ const Billing = () => {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
                         <h1 style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '-0.5px' }}>POS Terminal</h1>
+                        {activeRegister ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-bold uppercase px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-full flex items-center gap-1.5">
+                                    <Monitor className="w-3.5 h-3.5" />
+                                    {activeRegister.name}
+                                </span>
+                                <span className="text-[11px] font-medium px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full flex items-center gap-1.5 border border-blue-100">
+                                    <User className="w-3.5 h-3.5" />
+                                    {user?.name}
+                                </span>
+                                <button
+                                    onClick={() => { setPendingRegister(null); setIsSelectRegisterOpen(true); }}
+                                    className="text-[11px] font-bold px-3 py-1.5 bg-slate-100 text-slate-600 rounded-full flex items-center gap-1.5 hover:bg-slate-200 transition-colors border border-slate-200"
+                                >
+                                    <ArrowLeftRight className="w-3.5 h-3.5" /> Switch
+                                </button>
+                            </div>
+                        ) : !checkingSession ? (
+                            <button
+                                onClick={() => setIsSelectRegisterOpen(true)}
+                                className="text-[11px] font-bold uppercase px-3 py-1.5 bg-red-100 text-red-800 rounded-full flex items-center gap-1.5 shadow-sm border border-red-200 hover:bg-red-200 transition-colors cursor-pointer"
+                            >
+                                <AlertTriangle className="w-3 h-3" />
+                                No Counter Selected — Click to Select
+                            </button>
+                        ) : null}
                         {heldOrders.length > 0 && (
                             <Button
                                 variant="outline"
@@ -1008,12 +1126,43 @@ const Billing = () => {
                                 </button>
                             </div>
                         </div>
+
+                        {paymentMethod === 'cash' && (
+                            <div className="bg-slate-50 border p-4 rounded-xl space-y-3 mt-4">
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Cash Given By Customer</Label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
+                                        <input
+                                            type="number"
+                                            value={cashGiven}
+                                            onChange={(e) => setCashGiven(e.target.value)}
+                                            className="w-full h-12 pl-8 pr-4 rounded-lg border-slate-300 font-bold text-lg"
+                                            placeholder="0"
+                                            min={total}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between text-sm pt-2">
+                                    <span className="font-semibold text-slate-600">Change to Return:</span>
+                                    <span className={`font-black text-xl ${cashGiven && Number(cashGiven) >= total ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                        ₹{cashGiven && Number(cashGiven) >= total ? (Number(cashGiven) - total).toFixed(2) : '0.00'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <DialogFooter className="gap-3 sm:flex-col sm:space-x-0">
+                        {!activeRegister && (
+                            <div className="bg-red-50 text-red-800 p-3 rounded-lg text-xs font-semibold flex items-start gap-2 border border-red-200 w-full mb-2">
+                                <AlertTriangle className="w-4 h-4 shrink-0" />
+                                <p>You do not have an open register session. Sales cannot be securely tracked. Please assign a register first.</p>
+                            </div>
+                        )}
                         <Button
                             className="w-full h-14 rounded-2xl text-lg font-bold gap-2"
                             onClick={handleCheckout}
-                            disabled={processing}
+                            disabled={processing || (!activeRegister && user?.role !== 'owner')} // Allow owners to bypass restrict
                         >
                             <Printer className="w-5 h-5" /> {processing ? 'Processing...' : 'Complete & Print'}
                         </Button>
@@ -1111,6 +1260,18 @@ const Billing = () => {
                                     <span className="text-muted-foreground">Total GST</span>
                                     <span>₹{lastSale.totalGST.toFixed(2)}</span>
                                 </div>
+                                {lastSale.paymentMethod === 'cash' && lastSale.cashGiven && (
+                                    <>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-muted-foreground">Cash Given</span>
+                                            <span>₹{lastSale.cashGiven.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm text-emerald-600 font-bold">
+                                            <span>Change Returned</span>
+                                            <span>₹{lastSale.changeGiven.toFixed(2)}</span>
+                                        </div>
+                                    </>
+                                )}
                                 {lastSale.discount > 0 && (
                                     <div className="flex justify-between text-sm">
                                         <span className="text-muted-foreground flex items-center gap-1">
@@ -1197,6 +1358,108 @@ const Billing = () => {
                             </div>
                         ))}
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Register Selection Dialog */}
+            <Dialog open={isSelectRegisterOpen} onOpenChange={(open) => { if (!open) { setPendingRegister(null); } setIsSelectRegisterOpen(open); }}>
+                <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Monitor className="w-5 h-5" /> Select Cash Counter
+                        </DialogTitle>
+                        <DialogDescription>Choose which register to bill from. If the counter is closed, you'll be asked to provide an opening balance.</DialogDescription>
+                    </DialogHeader>
+
+                    {!pendingRegister ? (
+                        /* Step 1: List of Registers */
+                        <div className="space-y-2 py-2">
+                            {allRegisters.length === 0 ? (
+                                <div className="text-center py-10 text-slate-500">
+                                    <Monitor className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                                    <p className="font-bold">No Registers Found</p>
+                                    <p className="text-sm mt-1">Ask your admin to create counters from the Registers page.</p>
+                                </div>
+                            ) : allRegisters.map(reg => {
+                                const isInUseByOther = reg.activeSession && reg.activeSession.cashierId._id !== user._id;
+                                const isMySession = reg.activeSession && reg.activeSession.cashierId._id === user._id;
+                                return (
+                                    <button
+                                        key={reg._id}
+                                        onClick={() => handleSelectRegister(reg)}
+                                        disabled={isInUseByOther}
+                                        className={`w-full text-left p-4 rounded-xl border-2 flex items-center justify-between transition-all ${
+                                            isMySession
+                                                ? 'border-emerald-300 bg-emerald-50 hover:bg-emerald-100'
+                                                : isInUseByOther
+                                                    ? 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
+                                                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50 cursor-pointer'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                                isMySession ? 'bg-emerald-200 text-emerald-700' : isInUseByOther ? 'bg-slate-200 text-slate-500' : 'bg-blue-100 text-blue-600'
+                                            }`}>
+                                                <Monitor className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-900">{reg.name}</p>
+                                                <p className="text-xs text-slate-500">
+                                                    {isMySession ? `Your session • ₹${reg.activeSession.expectedBalance || 0} balance`
+                                                        : isInUseByOther ? `In use by ${reg.activeSession.cashierId.name}`
+                                                            : reg.assignedCashier ? `Assigned: ${reg.assignedCashier.name}` : 'Unassigned • Available'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            {isMySession ? (
+                                                <span className="text-[10px] font-bold uppercase px-2 py-1 bg-emerald-200 text-emerald-800 rounded-full">✓ Active</span>
+                                            ) : isInUseByOther ? (
+                                                <span className="text-[10px] font-bold uppercase px-2 py-1 bg-red-100 text-red-600 rounded-full">Busy</span>
+                                            ) : (
+                                                <span className="text-[10px] font-bold uppercase px-2 py-1 bg-blue-100 text-blue-600 rounded-full">Open</span>
+                                            )}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        /* Step 2: Opening Balance for selected register */
+                        <div className="space-y-4 py-4">
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-blue-200 text-blue-700 flex items-center justify-center shrink-0">
+                                    <Monitor className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-blue-900">{pendingRegister.name}</p>
+                                    <p className="text-xs text-blue-600">Enter opening cash to start this session</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Opening Cash Balance</Label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-lg">₹</span>
+                                    <input
+                                        type="number"
+                                        value={openingBalanceInput}
+                                        onChange={(e) => setOpeningBalanceInput(e.target.value)}
+                                        className="w-full h-14 pl-10 pr-4 rounded-xl border-2 border-slate-200 font-bold text-2xl focus:border-blue-400 focus:outline-none transition-colors"
+                                        placeholder="0"
+                                        min="0"
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter className="gap-2">
+                                <Button variant="outline" onClick={() => setPendingRegister(null)}>Back</Button>
+                                <Button onClick={handleOpenSession} disabled={switchingRegister} className="bg-emerald-600 hover:bg-emerald-700">
+                                    {switchingRegister && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                    Open Session with ₹{Number(openingBalanceInput) || 0}
+                                </Button>
+                            </DialogFooter>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>

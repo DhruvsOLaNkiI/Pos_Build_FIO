@@ -56,6 +56,7 @@ const Products = () => {
         stockQty: '0',
         minStockLevel: '10',
         barcode: '',
+        description: '',
     });
 
     // Units list
@@ -113,6 +114,7 @@ const Products = () => {
                 transferQty: '',
                 minStockLevel: product.minStockLevel.toString(),
                 barcode: product.barcode || '',
+                description: product.description || '',
                 allocations: product.allocations || [],
                 sourceWarehouseId: product.allocations?.length > 0 ? product.allocations[0].warehouseId : '',
             });
@@ -131,6 +133,7 @@ const Products = () => {
                 transferQty: '',
                 minStockLevel: '10',
                 barcode: '',
+                description: '',
             });
         }
         setIsModalOpen(true);
@@ -743,6 +746,17 @@ const Products = () => {
                                     type="number"
                                     value={formData.minStockLevel}
                                     onChange={(e) => setFormData({ ...formData, minStockLevel: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="space-y-2 col-span-2">
+                                <Label htmlFor="description">Product Description</Label>
+                                <textarea
+                                    id="description"
+                                    className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    placeholder="Enter detailed product description..."
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 />
                             </div>
                         </div>

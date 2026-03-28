@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import API from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, LayoutTemplate, Columns, SlidersHorizontal, Check, Palette, CreditCard } from 'lucide-react';
+import { Loader2, LayoutTemplate, Columns, SlidersHorizontal, Check, Palette, CreditCard, Percent } from 'lucide-react';
 
 const heroOptions = [
     {
@@ -95,6 +95,7 @@ const GlobalPortalDesign = () => {
     const [heroType, setHeroType] = useState('grid');
     const [accentColor, setAccentColor] = useState('blue');
     const [productCardStyle, setProductCardStyle] = useState('minimal');
+    const [defaultGstPercent, setDefaultGstPercent] = useState(0);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -105,6 +106,7 @@ const GlobalPortalDesign = () => {
                     setHeroType(d.heroSectionType || 'grid');
                     setAccentColor(d.accentColor || 'blue');
                     setProductCardStyle(d.productCardStyle || 'minimal');
+                    setDefaultGstPercent(d.defaultGstPercent || 0);
                 }
             } catch (error) {
                 console.error("Failed to fetch settings", error);
@@ -123,6 +125,7 @@ const GlobalPortalDesign = () => {
                 heroSectionType: heroType,
                 accentColor,
                 productCardStyle,
+                defaultGstPercent: parseFloat(defaultGstPercent) || 0,
             });
             if (res.data?.success) {
                 setSaveMessage({ type: 'success', text: '✅ Changes saved! Customer portal updated globally.' });
@@ -323,6 +326,64 @@ const GlobalPortalDesign = () => {
                             </Card>
                         );
                     })}
+                </div>
+            </div>
+
+            {/* Section 4: Order & Tax Settings */}
+            <div className="space-y-4 pb-20">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Percent className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-semibold">Taxes & Checkout Rules</h2>
+                        <p className="text-sm text-muted-foreground">Manage global tax rates and order behavior for online customers</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <Card className="border-primary/20 bg-primary/5">
+                        <CardContent className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="font-semibold flex items-center gap-2">
+                                    <Percent className="w-4 h-4" /> Global Online GST Rate
+                                </h4>
+                            </div>
+                            <div className="space-y-4">
+                                <p className="text-xs text-muted-foreground leading-relaxed italic">
+                                    This GST percentage will be automatically applied to products in the online portal if they don't have a specific GST set in the master catalog.
+                                </p>
+                                <div className="flex items-center gap-4">
+                                    <div className="relative flex-1">
+                                        <input
+                                            type="number"
+                                            className="w-full bg-white border border-border rounded-lg px-4 py-3 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-primary pr-10"
+                                            value={defaultGstPercent}
+                                            onChange={(e) => setDefaultGstPercent(e.target.value)}
+                                            min="0"
+                                            max="100"
+                                            placeholder="0"
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">%</span>
+                                    </div>
+                                    <div className="shrink-0 space-y-1">
+                                        <button onClick={() => setDefaultGstPercent(5)} className="block w-full text-[10px] font-bold bg-slate-100 px-2 py-1 rounded hover:bg-slate-200 transition-colors">SET 5%</button>
+                                        <button onClick={() => setDefaultGstPercent(12)} className="block w-full text-[10px] font-bold bg-slate-100 px-2 py-1 rounded hover:bg-slate-200 transition-colors">SET 12%</button>
+                                        <button onClick={() => setDefaultGstPercent(18)} className="block w-full text-[10px] font-bold bg-slate-100 px-2 py-1 rounded hover:bg-slate-200 transition-colors">SET 18%</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 flex flex-col justify-center gap-2">
+                        <div className="flex items-center gap-2 text-slate-500 font-bold text-xs uppercase tracking-tighter">
+                            <Check className="w-4 h-4" /> Live Preview
+                        </div>
+                        <p className="text-sm font-medium text-slate-600">
+                            An item priced at <span className="text-black font-extrabold">₹100</span> will show a GST of <span className="text-primary font-black">₹{(100 * (parseFloat(defaultGstPercent) || 0) / 100).toFixed(2)}</span> at checkout.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

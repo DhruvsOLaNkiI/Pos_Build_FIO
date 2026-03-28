@@ -23,6 +23,7 @@ import Inventory from '@/pages/Inventory';
 import ExpiredProducts from '@/pages/ExpiredProducts';
 import OrderTracking from '@/pages/OrderTracking';
 import Stores from '@/pages/Stores';
+import Registers from '@/pages/Registers';
 import Loyalty from '@/pages/Loyalty';
 import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
 import SuperAdminCompanies from '@/pages/SuperAdminCompanies';
@@ -92,6 +93,7 @@ function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/warehouses" element={<Warehouses />} />
                 <Route path="/stores" element={<Stores />} />
+                <Route path="/registers" element={<Registers />} />
 
                 {/* Inventory Module */}
                 <Route path="/inventory" element={<Inventory />} />

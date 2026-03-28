@@ -64,6 +64,15 @@ const productSchema = new mongoose.Schema(
             default: '',
             trim: true,
         },
+        description: {
+            type: String,
+            default: '',
+            trim: true,
+        },
+        specifications: [{
+            key: String,
+            value: String
+        }],
         batches: [{
             batchNumber: { type: String, required: true },
             quantity: { type: Number, required: true, default: 0 },
@@ -103,6 +112,16 @@ const productSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Company',
             required: true,
+        },
+        averageRating: {
+            type: Number,
+            default: 0,
+            min: 0,
+            max: 5
+        },
+        totalReviews: {
+            type: Number,
+            default: 0
         }
     },
     {

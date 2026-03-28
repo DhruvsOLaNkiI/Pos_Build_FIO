@@ -69,12 +69,14 @@ app.use('/api/stores', require('./routes/storeRoutes'));
 const warehouseInventoryRoutes = require('./routes/warehouseInventoryRoutes');
 const loyaltyRoutes = require('./routes/loyaltyRoutes');
 const customerAppRoutes = require('./routes/customerAppRoutes');
+const registerRoutes = require('./routes/registerRoutes');
 
 app.use('/api/warehouse-inventory', warehouseInventoryRoutes);
 app.use('/api/loyalty', loyaltyRoutes);
 
 // --- Customer Portal Application Routes ---
 app.use('/api/customer-app', customerAppRoutes);
+app.use('/api/registers', registerRoutes);
 
 // --- Admin Online Orders Management ---
 app.use('/api/online-orders', require('./routes/onlineOrderRoutes'));

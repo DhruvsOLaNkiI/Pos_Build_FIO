@@ -15,6 +15,12 @@ const globalSettingsSchema = new mongoose.Schema({
         type: String,
         enum: ['minimal', 'detailed', 'compact'],
         default: 'minimal'
+    },
+    defaultGstPercent: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
     }
 }, { timestamps: true });
 

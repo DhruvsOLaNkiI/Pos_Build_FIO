@@ -31,7 +31,8 @@ import {
     Activity,
     RefreshCcw,
     LayoutTemplate,
-    Image
+    Image,
+    Monitor
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/useToast';
@@ -46,7 +47,7 @@ import {
 const navItems = [
     // Core Business
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['owner', 'cashier', 'staff'], category: 'Core', permission: 'dashboard' },
-    { icon: ShoppingCart, label: 'Billing', path: '/billing', roles: ['owner', 'cashier'], category: 'Core', permission: 'billing' },
+    { icon: ShoppingCart, label: 'Billing', path: '/billing', roles: ['owner', 'cashier', 'staff'], category: 'Core', permission: 'billing' },
     { icon: RefreshCcw, label: 'Returns & Exchange', path: '/returns', roles: ['owner', 'cashier'], category: 'Core', permission: 'billing' },
     { icon: Users, label: 'Customers', path: '/customers', roles: ['owner', 'cashier', 'staff'], category: 'Core', permission: 'customers' },
     { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['owner'], category: 'Core', permission: 'reports' },
@@ -67,6 +68,7 @@ const navItems = [
     { icon: PackageSearch, label: 'Order Tracking', path: '/order-tracking', roles: ['owner'], category: 'Supply Chain', permission: 'order_tracking' },
 
     // Management
+    { icon: Monitor, label: 'Registers (POS)', path: '/registers', roles: ['owner', 'staff'], category: 'Management', permission: 'settings' },
     { icon: UserCog, label: 'People', path: '/employees', roles: ['owner', 'cashier', 'staff'], category: 'Management', permission: 'employees' },
     { icon: Sparkles, label: 'Loyalty & Offers', path: '/loyalty', roles: ['owner'], category: 'Management', permission: 'loyalty' },
     { icon: Globe, label: 'Online Orders', path: '/online-orders', roles: ['owner', 'cashier'], category: 'Management', permission: 'online_orders' },

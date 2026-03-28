@@ -65,4 +65,5 @@ Today, we successfully moved the entire **FIO POS & Customer Portal** project fr
 #. Granular Access Control (Cashier & Staff)
 
 # In Coustomer Portal i Added offer page Woring Smoothly AND Discount item CAn Easy Open
+# 25_03_2026 - I add  CSV Import and Export Feature in Admin Pannel and Auto Generate Barcode if Not Found , product filtration , 
  
