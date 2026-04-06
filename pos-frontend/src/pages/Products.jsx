@@ -240,6 +240,16 @@ const Products = () => {
         setSelectedIds(checked ? filteredProducts.map(p => p._id) : []);
     };
 
+    // Handle image upload success - refresh product list
+    const handleImageUpload = (productId, imageUrl) => {
+        // Update the product in the local state
+        setProducts(prevProducts => 
+            prevProducts.map(p => 
+                p._id === productId ? { ...p, imageUrl } : p
+            )
+        );
+    };
+
     // === CSV Import / Export Handlers ===
     const handleExportCsv = async () => {
         try {
@@ -452,6 +462,7 @@ const Products = () => {
                 selectedIds={isCashier ? [] : selectedIds}
                 onSelect={isCashier ? undefined : handleSelectRow}
                 onSelectAll={isCashier ? undefined : handleSelectAll}
+                onImageUpload={isCashier ? undefined : handleImageUpload}
             />
 
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

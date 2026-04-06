@@ -2,6 +2,9 @@ import { Plus, Minus, Store as StoreIcon } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
 
+// API base URL for images
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
 const GopuffProductCard = ({ product, className = "" }) => {
   const { addToCart, removeFromCart, cart } = useCart();
   
@@ -9,10 +12,32 @@ const GopuffProductCard = ({ product, className = "" }) => {
   const cartItem = cart.find(item => item._id === product._id);
   const quantity = cartItem ? cartItem.quantity : 0;
 
-  // Handle image path
-  const imageUrl = product.imageUrls && product.imageUrls[0] 
-    ? `http://localhost:5001${product.imageUrls[0]}`
-    : (product.image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop');
+  // Handle image path - check multiple possible fields
+  const getImageUrl = () => {
+    // Priority: imageUrl (singular) > imageUrls[0] > image > fallback
+    if (product.imageUrl) {
+      return `${API_BASE_URL}${product.imageUrl}`;
+    }
+    if (product.imageUrls && product.imageUrls[0]) {
+      return `${API_BASE_URL}${product.imageUrls[0]}`;
+    }
+    if (product.image) {
+      return product.image;
+    }
+    // Fallback image based on category
+    const categoryFallbacks = {
+      'Food': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200',
+      'Dairy': 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=200',
+      'Beverages': 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=200',
+      'Chocolates': 'https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=200',
+      'Snacks': 'https://images.unsplash.com/photo-1566478989037-eec170784d0d?w=200',
+      'Medicine': 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=200',
+      'Electronics': 'https://images.unsplash.com/photo-1498049860654-af1a5c5668ba?w=200'
+    };
+    return categoryFallbacks[product.category] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200';
+  };
+
+  const imageUrl = getImageUrl();
 
   const price = product.sellingPrice || product.price || 0;
 

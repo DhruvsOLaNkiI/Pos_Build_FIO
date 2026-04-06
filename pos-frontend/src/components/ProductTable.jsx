@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
     Table,
     TableBody,
@@ -8,10 +8,18 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit2, Trash2, AlertCircle, ChevronDown, ChevronUp, Plus, Image as ImageIcon } from 'lucide-react';
+import { Edit2, Trash2, AlertCircle, ChevronDown, ChevronUp, Plus, Image as ImageIcon, Upload } from 'lucide-react';
+import API from '@/services/api';
+import { useToast } from '@/hooks/useToast';
 
-const ProductTable = ({ products, onEdit, onDelete, onAddVariant, selectedIds = [], onSelect, onSelectAll, readOnly = false }) => {
+// API base URL for images (without /api path)
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
+const ProductTable = ({ products, onEdit, onDelete, onAddVariant, selectedIds = [], onSelect, onSelectAll, readOnly = false, onImageUpload }) => {
     const [expandedGroups, setExpandedGroups] = useState({});
+    const [uploadingId, setUploadingId] = useState(null);
+    const fileInputRef = useRef(null);
+    const { toast } = useToast();
 
     // Group products by name
     const groupedProducts = (() => {
@@ -43,6 +51,53 @@ const ProductTable = ({ products, onEdit, onDelete, onAddVariant, selectedIds = 
 
     const toggleGroup = (key) => {
         setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const handleImageUpload = async (productId, file) => {
+        if (!file) return;
+        
+        setUploadingId(productId);
+        
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            const response = await API.post(`/products/${productId}/upload-image`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            
+            if (response.data.success) {
+                toast({
+                    title: 'Success',
+                    description: 'Image uploaded successfully',
+                    variant: 'default'
+                });
+                onImageUpload?.(productId, response.data.data.imageUrl);
+            }
+        } catch (error) {
+            toast({
+                title: 'Error',
+                description: error.response?.data?.message || 'Failed to upload image',
+                variant: 'destructive'
+            });
+        } finally {
+            setUploadingId(null);
+        }
+    };
+
+    const triggerFileInput = (productId) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleImageUpload(productId, file);
+            }
+        };
+        input.click();
     };
 
     return (
@@ -100,13 +155,35 @@ const ProductTable = ({ products, onEdit, onDelete, onAddVariant, selectedIds = 
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            {product.imageUrl ? (
-                                                <img src={`http://localhost:5001${product.imageUrl}`} alt={product.name} className="w-8 h-8 rounded-md object-cover border border-border" />
-                                            ) : (
-                                                <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center border border-border">
-                                                    <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                                            <div className="relative group">
+                                                {product.imageUrl ? (
+                                                    <img 
+                                                        src={`${API_BASE_URL}${product.imageUrl}`} 
+                                                        alt={product.name} 
+                                                        className="w-10 h-10 rounded-md object-cover border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                                        onClick={() => triggerFileInput(product._id)}
+                                                        title="Click to change image"
+                                                    />
+                                                ) : (
+                                                    <div 
+                                                        className="w-10 h-10 rounded-md bg-muted flex items-center justify-center border border-border cursor-pointer hover:bg-muted/80 transition-colors"
+                                                        onClick={() => triggerFileInput(product._id)}
+                                                        title="Click to upload image"
+                                                    >
+                                                        {uploadingId === product._id ? (
+                                                            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                        ) : (
+                                                            <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <div 
+                                                    className="absolute inset-0 bg-black/50 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                                    onClick={() => triggerFileInput(product._id)}
+                                                >
+                                                    <Upload className="w-4 h-4 text-white" />
                                                 </div>
-                                            )}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="font-medium">
                                             <div className="flex flex-col gap-1">
@@ -199,10 +276,10 @@ const ProductTable = ({ products, onEdit, onDelete, onAddVariant, selectedIds = 
                                         </TableCell>
                                         <TableCell>
                                             {group.items[0]?.imageUrl ? (
-                                                <img src={`http://localhost:5001${group.items[0].imageUrl}`} alt={group.name} className="w-8 h-8 rounded-md object-cover border border-border" />
+                                                <img src={`${API_BASE_URL}${group.items[0].imageUrl}`} alt={group.name} className="w-10 h-10 rounded-md object-cover border border-border" />
                                             ) : (
-                                                <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center border border-border">
-                                                    <ImageIcon className="w-4 h-4 text-muted-foreground" />
+                                                <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center border border-border">
+                                                    <ImageIcon className="w-5 h-5 text-muted-foreground" />
                                                 </div>
                                             )}
                                         </TableCell>

@@ -32,6 +32,39 @@ router.post('/import-csv', authorize('owner', 'staff'), csvUpload.single('csvFil
 router.post('/bulk-update-price', authorize('owner'), bulkUpdatePrice);
 router.delete('/bulk', authorize('owner', 'staff'), bulkDeleteProducts);
 
+// Image upload endpoint for existing products
+router.post('/:id/upload-image', authorize('owner', 'staff'), upload.single('image'), async (req, res) => {
+    try {
+        const Product = require('../models/Product');
+        const product = await Product.findById(req.params.id);
+        
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'Product not found' });
+        }
+        
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No image file provided' });
+        }
+        
+        // Update product with new image URL
+        const imageUrl = `/uploads/products/${req.file.filename}`;
+        product.imageUrl = imageUrl;
+        await product.save();
+        
+        res.status(200).json({
+            success: true,
+            message: 'Image uploaded successfully',
+            data: { imageUrl }
+        });
+    } catch (error) {
+        console.error('Image upload error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to upload image'
+        });
+    }
+});
+
 router.route('/:id')
     .get(getProduct)
     .put(authorize('owner', 'staff'), upload.single('image'), updateProduct)
